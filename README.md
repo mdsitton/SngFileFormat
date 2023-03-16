@@ -60,4 +60,5 @@
 - If no masking is used, the raw binary of each file appears at its listed index, allowing for programs to efficiently access only certain files.
 - File binaries are placed at the end of the format to allow programs to efficiently scan only the `.sng`'s `metadata` or `fileMeta` sections.
 - Files can be masked. The default will simply obfuscate the file's binary so that it can't be directly detected by programs that don't know how to parse the file.
+- This format is exclusively in a LittleEndian byte ordering for effecieny on modern cpu architectures. 
 
