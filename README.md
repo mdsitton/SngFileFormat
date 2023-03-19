@@ -33,8 +33,15 @@
  * masked == 0: [contents] is the raw file binary
  * masked == 1: [contents] have been XOR-ed with [seed]
  * Example code to convert to the file's true contents:
- * for i = 0 to size(wrangled_audio_file_bytes):
- *  clear_audio_file_bytes[i] = wrangled_audio_file_bytes[i] XOR ( (seed[i modulo 16] XOR i) AND 0xFF) // bitwise AND w/ 0xFF or cast to a byte depending on language
+ * 
+ * // Iterate through the indices of the wrangled_audio_file_bytes array
+ * for i = 0 to size(wrangled_audio_file_bytes) - 1:
+ * 
+ *    // Calculate the XOR key based on the current index and seed array
+ *    xor_key = (seed[i % 16] XOR i) AND 0xFF // You can cast to a byte instead of "AND 0xFF" if your language supports it
+ * 
+ *    // XOR each byte in wrangled_audio_file_bytes with the xor_key
+ *    clear_audio_file_bytes[i] = wrangled_audio_file_bytes[i] XOR xor_key
  */
 ```
 
