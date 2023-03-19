@@ -48,7 +48,7 @@ namespace SngLib
             ulong fileCount = br.ReadUInt64();
             for (ulong i = 0; i < fileCount; i++)
             {
-                string fileName = Encoding.UTF8.GetString(br.ReadBytes((int)br.ReadUInt64()));
+                string fileName = Encoding.UTF8.GetString(br.ReadBytes(br.ReadInt32()));
                 var fileData = new SngFile.FileData()
                 {
                     Masked = br.ReadByte() != 0,
@@ -65,7 +65,7 @@ namespace SngLib
                 {
                     for (int j = 0; j < contents.Length; j++)
                     {
-                        contents[j] ^= (byte)(sngFile.Seed[j % 16]);
+                        contents[j] ^= (byte)(sngFile.Seed[j % 16] ^ j);
                     }
                 }
                 fileData.Contents = contents;
@@ -131,7 +131,7 @@ namespace SngLib
                     continue;
 
                 byte[] fileNameBytes = Encoding.UTF8.GetBytes(fileEntry.Key);
-                bw.Write((ulong)fileNameBytes.Length);
+                bw.Write(fileNameBytes.Length);
                 bw.Write(fileNameBytes);
                 bw.Write(fileEntry.Value.Masked ? (byte)1 : (byte)0);
                 bw.Write((ulong)fileEntry.Value.Contents.Length);
@@ -150,7 +150,7 @@ namespace SngLib
                     contents = (byte[])contents.Clone();
                     for (int i = 0; i < contents.Length; i++)
                     {
-                        contents[i] ^= (byte)(sngFile.Seed[i % 16]);
+                        contents[i] ^= (byte)(sngFile.Seed[i % 16] ^ i);
                     }
                 }
                 bw.Write(contents);
