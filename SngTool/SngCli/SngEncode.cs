@@ -73,7 +73,6 @@ namespace SngCli
                 var topLevelPlaylist = iniFile.GetString("song", "playlist", "").ToLowerInvariant();
                 var subPlaylist = iniFile.GetString("song", "sub_playlist", "").ToLowerInvariant();
 
-
                 int albumTrack;
                 if (iniFile.IsKey("song", "album_track"))
                     albumTrack = iniFile.GetInt("song", "album_track", 16000);
@@ -191,7 +190,7 @@ namespace SngCli
                     {
                         if (conf.EncodeJpeg)
                         {
-                            fileData = await JpegEncoding.EncodeImageToJpeg(file, conf.JpegQuality, conf.ForceSize);
+                            fileData = await JpegEncoding.EncodeImageToJpeg(file, conf.JpegQuality, conf.ForceSize, conf.Size);
                         }
                         else
                         {
@@ -233,9 +232,19 @@ namespace SngCli
                     sngFile.AddFile(fileData.name, new SngFile.FileData { Masked = true, Contents = fileData.data });
                 }
             }
+            var folder = Path.GetDirectoryName(songFolder)!;
+            var relative = Path.GetRelativePath(conf.InputPath!, folder);
+            var outputFolder = Path.Combine(Path.GetFullPath(conf.OutputPath!), relative);
+
+            if (!Directory.Exists(outputFolder))
+            {
+                Directory.CreateDirectory(outputFolder);
+            }
+
             var saveFile = $"{Path.GetFileName(songFolder)}.sng";
-            Console.WriteLine($"Saving file: {saveFile}");
-            SngSerializer.SaveSngFile(sngFile, Path.Combine(conf.OutputPath!, saveFile));
+            var fullPath = Path.Combine(outputFolder, saveFile);
+            Console.WriteLine($"Saving file: {fullPath}");
+            SngSerializer.SaveSngFile(sngFile, fullPath);
         }
 
 
