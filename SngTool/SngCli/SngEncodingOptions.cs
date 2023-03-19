@@ -31,6 +31,7 @@ namespace SngCli
         public SngEncodingConfig(Dictionary<string, string> args)
         {
             _instance = this;
+            // Validate command line arguments
             if (!args.TryGetValue("input", out InputPath) || (InputPath == null && !args.TryGetValue("i", out InputPath)))
             {
                 Console.WriteLine("Input folder argument not found:");
