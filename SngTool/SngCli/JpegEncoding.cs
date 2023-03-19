@@ -108,28 +108,44 @@ namespace SngCli
         public static byte[] EncodeImageToJpeg(string filePath, int quality = 75, bool upscale = false, SizeTiers size = SizeTiers.Size512x512)
         {
             var ms = new MemoryStream();
-            using (var file = File.OpenRead(filePath))
-            using (var image = Image.Load(file))
+
+            try
             {
 
-                // Don't resize if it's not square
-                if (image.Height == image.Width && size != SizeTiers.None)
+                using (var file = File.OpenRead(filePath))
+                using (var image = Image.Load(file))
                 {
-                    var sizeVal = CalculateFinalSize(size, upscale, image.Height);
-                    image.Mutate(x => x.Resize(sizeVal, sizeVal, KnownResamplers.CatmullRom));
-                }
 
-                JpegEncoder encoder = new JpegEncoder
-                {
-                    Quality = quality,
-                    ColorType = JpegEncodingColor.Rgb,
-                    SkipMetadata = true
-                };
-                image.SaveAsJpeg(ms, encoder);
-                Console.WriteLine($"Image Size: {image.Width}x{image.Height} Compression Ratio: {file.Length / (float)ms.Length:0.00}x");
-                ms.Seek(0, SeekOrigin.Begin);
-                return ms.ToArray();
+                    // Don't resize if it's not square
+                    if (image.Height == image.Width && size != SizeTiers.None)
+                    {
+                        var sizeVal = CalculateFinalSize(size, upscale, image.Height);
+                        image.Mutate(x => x.Resize(sizeVal, sizeVal, KnownResamplers.CatmullRom));
+                    }
+
+                    JpegEncoder encoder = new JpegEncoder
+                    {
+                        Quality = quality,
+                        ColorType = JpegEncodingColor.Rgb,
+                        SkipMetadata = true
+                    };
+                    image.SaveAsJpeg(ms, encoder);
+                    Console.WriteLine($"Image Size: {image.Width}x{image.Height} Compression Ratio: {file.Length / (float)ms.Length:0.00}x");
+                    ms.Seek(0, SeekOrigin.Begin);
+
+                    if (upscale || ms.Length < file.Length)
+                    {
+                        return ms.ToArray();
+                    }
+                }
             }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Error encoding {filePath}, falling back to original image. {e}");
+            }
+
+            // Return original file if it's smaller in size or if we encountered an error
+            return File.ReadAllBytes(filePath);
         }
     }
 }
