@@ -41,9 +41,9 @@
 ### `[metadata]` (represents a single key/value pair)
 
 ```jsx
-[keyLen]		// The number of bytes in [key] (uint64)
+[keyLen]		// The number of bytes in [key] (int32)
 [key]			// The metadata's key (UTF-8 string)
-[valueLen]		// The number of bytes in [value] (uint64)
+[valueLen]		// The number of bytes in [value] (int32)
 [value]			// The metadata's value (UTF-8 string)
 ```
 
