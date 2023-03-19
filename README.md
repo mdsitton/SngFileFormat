@@ -24,7 +24,7 @@
 
 ### `[fileMeta]` (contains the metadata of each `[file]` section)
 ```jsx
-[filenameLen]	// The number of bytes in [filename] (uint64)
+[filenameLen]	// The number of bytes in [filename] (int32)
 [filename]		// The file's name (UTF-8 string)
 [masked]	// The type of file masking used on the file's [contents] (1 byte)
 [contentsLen]	// The number of bytes in the file's [contents] (uint64)
