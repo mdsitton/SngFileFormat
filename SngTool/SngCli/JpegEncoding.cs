@@ -105,7 +105,7 @@ namespace SngCli
         /// <param name="upscale">Enables image rescaling</param>
         /// <param name="size">Resize images to specific sizes or the nearest option lower</param>
         /// <returns>byte array of new image</returns>
-        public async static Task<(string fileName, byte[])> EncodeImageToJpeg(string filePath, int quality = 75, bool upscale = false, SizeTiers size = SizeTiers.Size512x512)
+        public async static Task<(string fileName, byte[]?)> EncodeImageToJpeg(string filePath, int quality = 75, bool upscale = false, SizeTiers size = SizeTiers.Size512x512)
         {
             var ms = new MemoryStream();
 

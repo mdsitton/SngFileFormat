@@ -191,7 +191,7 @@ namespace SngCli
                     {
                         if (conf.EncodeJpeg)
                         {
-                            var data = JpegEncoding.EncodeImageToJpeg(file, conf.JpegQuality);
+                            fileData = await JpegEncoding.EncodeImageToJpeg(file, conf.JpegQuality, conf.ForceSize);
                         }
                         else
                         {
