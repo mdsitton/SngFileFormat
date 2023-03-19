@@ -65,7 +65,7 @@ namespace SngLib
                 {
                     for (int j = 0; j < contents.Length; j++)
                     {
-                        contents[j] ^= sngFile.Seed[j % 16];
+                        contents[j] ^= (byte)(sngFile.Seed[j % 16]);
                     }
                 }
                 fileData.Contents = contents;
@@ -150,7 +150,7 @@ namespace SngLib
                     contents = (byte[])contents.Clone();
                     for (int i = 0; i < contents.Length; i++)
                     {
-                        contents[i] ^= sngFile.Seed[i % 16];
+                        contents[i] ^= (byte)(sngFile.Seed[i % 16]);
                     }
                 }
                 bw.Write(contents);
