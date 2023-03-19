@@ -254,9 +254,19 @@ namespace SngCli
             }
         }
 
+        private static readonly string videoPattern = @"(?i).*\.(mp4|avi|webm|vp8|ogv|mpeg)$";
+        private static Regex videoRegex = new Regex(videoPattern, RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+        private static readonly string imagePattern = @"(?i).*\.(png|jpg|jpeg)$";
+        private static Regex imageRegex = new Regex(imagePattern, RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+        private static readonly string audioPattern = @"(?i).*\.(wav|opus|ogg|mp3)$";
+        private static Regex audioRegex = new Regex(audioPattern, RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
         private static async Task EncodeSong(string songFolder,
         bool opusEncode, int opusBitrate,
         bool jpegEncode, int jpegQuality,
+        bool excludeVideo,
         string outputFolder)
         {
             SngFile sngFile = new SngFile();
@@ -269,11 +279,7 @@ namespace SngCli
             foreach (var file in fileList)
             {
                 var fileName = Path.GetFileName(file);
-                if (fileName.EndsWith(".wav", StringComparison.OrdinalIgnoreCase) ||
-                    fileName.EndsWith(".opus", StringComparison.OrdinalIgnoreCase) ||
-                    fileName.EndsWith(".ogg", StringComparison.OrdinalIgnoreCase) ||
-                    fileName.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase)
-                    )
+                if (audioRegex.IsMatch(file))
                 {
                     if (opusEncode && !fileName.EndsWith(".opus", StringComparison.OrdinalIgnoreCase))
                     {
@@ -313,10 +319,7 @@ namespace SngCli
                 {
                     fileData = ("notes.chart", File.ReadAllBytes(file));
                 }
-                else if (
-                    fileName.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ||
-                    fileName.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
-                    fileName.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase))
+                else if (imageRegex.IsMatch(file))
                 {
                     if (fileName.StartsWith("album", StringComparison.OrdinalIgnoreCase))
                     {
@@ -344,6 +347,22 @@ namespace SngCli
                             fileData = (fileName, File.ReadAllBytes(file));
                         }
                     }
+                    else if (fileName.StartsWith("highway", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (jpegEncode)
+                        {
+                            var data = JpegEncoding.EncodeImageToJpeg(file, jpegQuality, false, SizeTiers.None);
+                            fileData = ("highway.jpg", data);
+                        }
+                        else
+                        {
+                            fileData = (fileName, File.ReadAllBytes(file));
+                        }
+                    }
+                }
+                else if (!excludeVideo && videoRegex.IsMatch(file) && fileName.StartsWith("video", StringComparison.OrdinalIgnoreCase))
+                {
+                    fileData = (fileName, File.ReadAllBytes(file));
                 }
 
                 if (fileData.data != null)
@@ -410,14 +429,14 @@ namespace SngCli
             {
                 foreach (var songFolder in songFolders)
                 {
-                    await EncodeSong(songFolder, encodeOpus, opusBitrate, encodeJpeg, jpegQuality, output);
+                    await EncodeSong(songFolder, encodeOpus, opusBitrate, encodeJpeg, jpegQuality, excludeVideo, output);
                 }
             }
             else
             {
                 await Parallel.ForEachAsync(songFolders, async (songFolder, token) =>
                 {
-                    await EncodeSong(songFolder, encodeOpus, opusBitrate, encodeJpeg, jpegQuality, output);
+                    await EncodeSong(songFolder, encodeOpus, opusBitrate, encodeJpeg, jpegQuality, excludeVideo, output);
                 });
             }
         }
