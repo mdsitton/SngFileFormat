@@ -21,6 +21,7 @@ namespace SongLib
         {
             var buffer = ArrayPool<byte>.Shared.Rent((int)new FileInfo(filePath).Length);
 
+            int currentLineNumber = 0;
             try
             {
                 using (var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
@@ -32,9 +33,11 @@ namespace SongLib
                 var detection = CharsetDetector.DetectFromBytes(buffer);
                 var best = detection.Detected;
 
-                Console.WriteLine($"{best.EncodingName} encoding found");
+                // Console.WriteLine($"{best.EncodingName} encoding found");
 
                 encoding = best.Encoding;
+
+                var fileStr = encoding.GetString(buffer, 0, buffer.Length);
 
                 var fileContent = encoding.GetString(buffer, 0, buffer.Length).AsSpan();
                 var currentSection = string.Empty;
@@ -42,6 +45,7 @@ namespace SongLib
                 while (!fileContent.IsEmpty)
                 {
                     var endOfLineIndex = fileContent.IndexOf('\n');
+                    currentLineNumber++;
 
                     if (endOfLineIndex == -1)
                     {
@@ -49,7 +53,15 @@ namespace SongLib
                     }
 
                     var line = fileContent.Slice(0, endOfLineIndex).Trim();
-                    fileContent = fileContent.Slice(endOfLineIndex + 1);
+
+                    if (endOfLineIndex == fileContent.Length)
+                    {
+                        fileContent = new Span<char>();
+                    }
+                    else
+                    {
+                        fileContent = fileContent.Slice(endOfLineIndex + 1);
+                    }
 
                     if (line.IsEmpty)
                     {
@@ -64,9 +76,10 @@ namespace SongLib
                     {
                         var separatorIndex = line.IndexOf('=');
 
+                        // Skip lines without proper = character
                         if (separatorIndex == -1)
                         {
-                            throw new FormatException($"Invalid INI file format: {line.ToString()}");
+                            continue;
                         }
 
                         var key = line.Slice(0, separatorIndex).Trim();
@@ -81,6 +94,10 @@ namespace SongLib
                         values[key.ToString()] = value.ToString();
                     }
                 }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"ERROR on line: # {currentLineNumber}: {e}");
             }
             finally
             {
@@ -105,14 +122,60 @@ namespace SongLib
             }
         }
 
+        // handle making section names case-insensitive as some charts use cased section names
+        public bool TryGetSection(string sectionName, out Dictionary<string, string>? section)
+        {
+            if (!sections.TryGetValue(sectionName, out var value))
+            {
+
+                if (!sections.TryGetValue(sectionName.ToLowerInvariant(), out value))
+                {
+                    section = null;
+                    return false;
+                }
+                else
+                {
+                    section = value;
+                    return true;
+                }
+            }
+            else
+            {
+                section = value;
+                return true;
+            }
+        }
+
+        public bool IsSection(string sectionName)
+        {
+            if (!sections.ContainsKey(sectionName))
+            {
+                if (!sections.ContainsKey(sectionName.ToLowerInvariant()))
+                {
+                    return false;
+                }
+                else
+                {
+                    return true;
+                }
+            }
+            else
+            {
+                return true;
+            }
+        }
+
+        public bool IsKey(string sectionName, string keyName)
+        {
+            return TryGetSection(sectionName, out var section) && section!.ContainsKey(keyName);
+        }
+
         public string GetString(string section, string key, string defaultValue = "")
         {
-            if (!this.sections.TryGetValue(section, out var values) ||
-                !values.TryGetValue(key, out var value))
+            if (!TryGetSection(section, out var sectionValue) || !sectionValue!.TryGetValue(key, out var value))
             {
                 return defaultValue;
             }
-
             return value;
         }
 

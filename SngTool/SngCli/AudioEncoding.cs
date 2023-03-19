@@ -8,6 +8,8 @@ namespace SngCli
 {
     public class AudioEncoding
     {
+        public static bool verbose = false;
+
         public static (string filename, byte[]? data) DecodeVorbisToWav(string filePath)
         {
             using (var file = File.OpenRead(filePath))
@@ -60,7 +62,7 @@ namespace SngCli
             using (var file = File.OpenRead(filePath))
             {
                 var args = $"--decode \"{filePath}\" - ";
-                var encodeData = await RunAudioProcess("lame", args);
+                var encodeData = await RunAudioProcess("lame", args, null, verbose);
 
                 var fileName = Path.GetFileName(filePath);
 
@@ -160,7 +162,7 @@ namespace SngCli
 
                     process.WaitForExit();
 
-                    if (copyError || process.ExitCode == 1)
+                    if (process.ExitCode == 1)
                     {
                         Console.WriteLine($"{processName} encoding error!");
                         if (process.ExitCode == 1)
@@ -168,6 +170,11 @@ namespace SngCli
                             Console.WriteLine(process.StandardError.ReadToEnd());
                         }
                         return null;
+                    }
+
+                    if (copyError)
+                    {
+                        Console.WriteLine($"WARNING: {processName} stopped before full input data was sent, this isn't always bad but double check this audio file you can run verbose mode to get the output of the opus encoder to verify!");
                     }
 
                     return outputStream.ToArray();
@@ -181,7 +188,7 @@ namespace SngCli
         public async static Task<(string filename, byte[]? data)> EncodeFileToOpus(string filePath, byte[] inputData, int bitRate)
         {
             var args = $"--vbr --framesize 60 --bitrate {bitRate} --discard-pictures --discard-comments - -";
-            var encodeData = await RunAudioProcess("opusenc", args, inputData);
+            var encodeData = await RunAudioProcess("opusenc", args, inputData, verbose);
 
             var fileName = Path.GetFileName(filePath);
 
