@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 using SngLib;
@@ -153,7 +153,7 @@ namespace SngCli
         private static bool IsValidSubfolder(string subfolder)
         {
             string[] files = Directory.GetFiles(subfolder);
-            bool hasMidiOrChart = files.Any(f => f.EndsWith(".midi") || f.EndsWith(".chart"));
+            bool hasMidiOrChart = files.Any(f => f.EndsWith(".mid") || f.EndsWith(".chart"));
             bool hasAudioFile = files.Any(f => f.EndsWith(".wav") || f.EndsWith(".ogg") || f.EndsWith(".opus") || f.EndsWith(".mp3"));
             bool hasSongIni = files.Any(f => f.EndsWith("song.ini"));
 
