@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 using SngLib;
@@ -27,7 +27,7 @@ namespace SngCli
             "resize"
         };
 
-        private static void DisplayHelp()
+        public static void DisplayHelp()
         {
             Console.WriteLine("Usage: SngCli [options]");
             Console.WriteLine("Options:");
@@ -263,12 +263,10 @@ namespace SngCli
         private static readonly string audioPattern = @"(?i).*\.(wav|opus|ogg|mp3)$";
         private static Regex audioRegex = new Regex(audioPattern, RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-        private static async Task EncodeSong(string songFolder,
-        bool opusEncode, int opusBitrate,
-        bool jpegEncode, int jpegQuality,
-        bool excludeVideo,
-        string outputFolder)
+        private static async Task EncodeSong(string songFolder)
         {
+            var conf = SngEncodingConfig.Instance;
+
             SngFile sngFile = new SngFile();
             Random.Shared.NextBytes(sngFile.Seed);
 
@@ -281,20 +279,20 @@ namespace SngCli
                 var fileName = Path.GetFileName(file);
                 if (audioRegex.IsMatch(file))
                 {
-                    if (opusEncode && !fileName.EndsWith(".opus", StringComparison.OrdinalIgnoreCase))
+                    if (conf.EncodeOpus && !fileName.EndsWith(".opus", StringComparison.OrdinalIgnoreCase))
                     {
                         // opusenc doesn't support loading mp3 or ogg vorbis
                         if (fileName.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase))
                         {
-                            fileData = await AudioEncoding.EncodeMp3ToOpus(file, opusBitrate);
+                            fileData = await AudioEncoding.EncodeMp3ToOpus(file, conf.OpusBitrate);
                         }
                         else if (fileName.EndsWith(".ogg", StringComparison.OrdinalIgnoreCase))
                         {
-                            fileData = await AudioEncoding.EncodeVorbisToOpus(file, opusBitrate);
+                            fileData = await AudioEncoding.EncodeVorbisToOpus(file, conf.OpusBitrate);
                         }
                         else
                         {
-                            fileData = await AudioEncoding.EncodeFileToOpus(file, opusBitrate);
+                            fileData = await AudioEncoding.EncodeFileToOpus(file, conf.OpusBitrate);
                         }
                     }
                     else
@@ -323,9 +321,9 @@ namespace SngCli
                 {
                     if (fileName.StartsWith("album", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (jpegEncode)
+                        if (conf.EncodeJpeg)
                         {
-                            var data = JpegEncoding.EncodeImageToJpeg(file, jpegQuality);
+                            var data = JpegEncoding.EncodeImageToJpeg(file, conf.JpegQuality);
                             fileData = (fileName, data);
                         }
                         else
@@ -336,9 +334,9 @@ namespace SngCli
                     }
                     else if (fileName.StartsWith("background", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (jpegEncode)
+                        if (conf.EncodeJpeg)
                         {
-                            var data = JpegEncoding.EncodeImageToJpeg(file, jpegQuality, false, SizeTiers.None);
+                            var data = JpegEncoding.EncodeImageToJpeg(file, conf.JpegQuality, false, SizeTiers.None);
                             fileData = ("background.jpg", data);
                         }
                         else
@@ -349,9 +347,9 @@ namespace SngCli
                     }
                     else if (fileName.StartsWith("highway", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (jpegEncode)
+                        if (conf.EncodeJpeg)
                         {
-                            var data = JpegEncoding.EncodeImageToJpeg(file, jpegQuality, false, SizeTiers.None);
+                            var data = JpegEncoding.EncodeImageToJpeg(file, conf.JpegQuality, false, SizeTiers.None);
                             fileData = ("highway.jpg", data);
                         }
                         else
@@ -360,7 +358,7 @@ namespace SngCli
                         }
                     }
                 }
-                else if (!excludeVideo && videoRegex.IsMatch(file) && fileName.StartsWith("video", StringComparison.OrdinalIgnoreCase))
+                else if (!conf.ExcludeVideo && videoRegex.IsMatch(file) && fileName.StartsWith("video", StringComparison.OrdinalIgnoreCase))
                 {
                     fileData = (fileName, File.ReadAllBytes(file));
                 }
@@ -372,71 +370,31 @@ namespace SngCli
             }
             var saveFile = $"{Path.GetFileName(songFolder)}.sng";
             Console.WriteLine($"Saving file: {saveFile}");
-            SngSerializer.SaveSngFile(sngFile, Path.Combine(outputFolder, saveFile));
+            SngSerializer.SaveSngFile(sngFile, Path.Combine(conf.OutputPath!, saveFile));
         }
 
 
-        private static async Task ProcessSongs(Dictionary<string, string> args)
+        private static async Task ProcessSongs()
         {
             // Validate command line arguments
-            if (!args.TryGetValue("input", out var input) || (input == null && !args.TryGetValue("i", out input)))
-            {
-                Console.WriteLine("Input folder argument not found:");
-                DisplayHelp();
-                return;
-            }
-            if (!args.TryGetValue("output", out string? output) || (output == null && !args.TryGetValue("o", out output)))
-            {
-                Console.WriteLine("Output folder argument not found:");
-                DisplayHelp();
-                return;
-            }
+            var conf = SngEncodingConfig.Instance;
 
-            // Bool flags we just need to make sure the keys exist
-            bool excludeVideo = args.TryGetValue("excludeVideo", out _);
-            bool encodeOpus = args.TryGetValue("encodeOpus", out _);
-            bool encodeJpeg = args.TryGetValue("encodeJpeg", out _);
-            bool forceSize = args.TryGetValue("forceSize", out _);
-            bool resize = args.TryGetValue("resize", out _);
-            bool noThreads = args.TryGetValue("noThreads", out _);
-
-            AudioEncoding.verbose = args.TryGetValue("verbose", out _);
-
-            int opusBitrate = 80;
-            if (args.TryGetValue("opusBitrate", out string? bitrateStr) && bitrateStr != null)
-            {
-                if (!int.TryParse(bitrateStr, out opusBitrate))
-                {
-                    Console.WriteLine($"Value for opusBitrate is not valid {bitrateStr}");
-                    return;
-                }
-            }
-
-            int jpegQuality = 75;
-            if (args.TryGetValue("jpegQuality", out string? jpegQualityStr) && jpegQualityStr != null)
-            {
-                if (!int.TryParse(jpegQualityStr, out jpegQuality))
-                {
-                    Console.WriteLine($"Value for jpegQuality is not valid {jpegQualityStr}");
-                    return;
-                }
-            }
 
             Console.WriteLine("SngCli scanning song folders");
 
-            List<string> songFolders = SearchForFolders(input!);
-            if (noThreads)
+            List<string> songFolders = SearchForFolders(conf.InputPath!);
+            if (conf.NoThreads)
             {
                 foreach (var songFolder in songFolders)
                 {
-                    await EncodeSong(songFolder, encodeOpus, opusBitrate, encodeJpeg, jpegQuality, excludeVideo, output);
+                    await EncodeSong(songFolder);
                 }
             }
             else
             {
                 await Parallel.ForEachAsync(songFolders, async (songFolder, token) =>
                 {
-                    await EncodeSong(songFolder, encodeOpus, opusBitrate, encodeJpeg, jpegQuality, excludeVideo, output);
+                    await EncodeSong(songFolder);
                 });
             }
         }
@@ -448,7 +406,10 @@ namespace SngCli
             if (cliArgs == null)
                 return;
 
-            await ProcessSongs(cliArgs);
+            // TODO - Implement encode vs decode vs inspect commands
+            var encodeConfig = new SngEncodingConfig(cliArgs);
+
+            await ProcessSongs();
         }
     }
 }
