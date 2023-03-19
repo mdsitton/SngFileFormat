@@ -35,7 +35,7 @@ namespace SngCli
             Console.WriteLine("      --verbose       Display more information such as audio encoder output.");
             Console.WriteLine("  -o, --out FOLDER    Specify output folder location");
             Console.WriteLine("  -i, --input FOLDER  Specify input folder to search for song folders");
-            Console.WriteLine("      --noThreads     Disable threading only process one song at a time");
+            Console.WriteLine("      --noThreads     Disable threading only process one song at a time. Can also be useful when a song has an error along with --verbose.");
             Console.WriteLine("      --excludeVideo  Exclude video files, CH doesn't support videos in sng files so they can be excluded to reduce size.");
             Console.WriteLine("      --encodeOpus    Encode all audio to opus");
             Console.WriteLine("      --opusBitrate   Set opus encoder bitrate, default: 80");
@@ -192,6 +192,7 @@ namespace SngCli
                 var topLevelPlaylist = iniFile.GetString("song", "playlist", "").ToLowerInvariant();
                 var subPlaylist = iniFile.GetString("song", "sub_playlist", "").ToLowerInvariant();
 
+
                 int albumTrack;
                 if (iniFile.IsKey("song", "album_track"))
                     albumTrack = iniFile.GetInt("song", "album_track", 16000);
@@ -199,6 +200,13 @@ namespace SngCli
                     albumTrack = iniFile.GetInt("song", "track", 16000);
 
                 var charter = iniFile.GetString("song", iniFile.IsKey("song", "charter") ? "charter" : "frets", "");
+
+                var customHOPO = iniFile.GetInt("song", "hopo_frequency", 0);
+                var isEighthHOPO = iniFile.GetBool("song", "eighthnote_hopo", false);
+                var multiplierNote = iniFile.GetInt("song", "multiplier_note", 0);
+                var offset = iniFile.GetInt("song", "delay", 0);
+                var videoStart = iniFile.GetInt("song", "video_start_time", 0);
+                var endEventsEnabled = iniFile.GetBool("song", "end_events", true);
 
                 // Save metadata to sng file
                 sngFile.SetString("name", name);
@@ -229,6 +237,14 @@ namespace SngCli
                 sngFile.SetString("sub_playlist", subPlaylist);
                 sngFile.SetInt("album_track", albumTrack);
                 sngFile.SetString("album_track", charter);
+                sngFile.SetInt("hopo_frequency", customHOPO);
+                sngFile.SetBool("eighthnote_hopo", isEighthHOPO);
+                sngFile.SetInt("multiplier_note", multiplierNote);
+                sngFile.SetInt("delay", offset);
+                sngFile.SetInt("video_start_time", videoStart);
+                sngFile.SetBool("end_events", endEventsEnabled);
+
+                // TODO - should we automatically parse any ch unrecognized tags and pass them in as-is?
                 return true;
             }
             else
