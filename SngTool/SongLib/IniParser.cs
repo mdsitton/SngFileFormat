@@ -3,7 +3,6 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using UtfUnknown;
 
 namespace SongLib
 {
@@ -19,27 +18,12 @@ namespace SongLib
 
         public void Load(string filePath)
         {
-            var buffer = ArrayPool<byte>.Shared.Rent((int)new FileInfo(filePath).Length);
-
             int currentLineNumber = 0;
             try
             {
-                using (var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
-                {
-                    stream.Read(buffer, 0, buffer.Length);
-                }
+                string text = File.ReadAllText(filePath);
 
-                var encoding = Encoding.UTF8;
-                var detection = CharsetDetector.DetectFromBytes(buffer);
-                var best = detection.Detected;
-
-                // Console.WriteLine($"{best.EncodingName} encoding found");
-
-                encoding = best.Encoding;
-
-                var fileStr = encoding.GetString(buffer, 0, buffer.Length);
-
-                var fileContent = encoding.GetString(buffer, 0, buffer.Length).AsSpan();
+                var fileContent = text.AsSpan();
                 var currentSection = string.Empty;
 
                 while (!fileContent.IsEmpty)
@@ -98,10 +82,7 @@ namespace SongLib
             catch (Exception e)
             {
                 Console.WriteLine($"ERROR on line: # {currentLineNumber}: {e}");
-            }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(buffer);
+                Environment.Exit(1);
             }
         }
 

@@ -6,8 +6,4 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="utf.unknown" Version="2.5.1" />
-  </ItemGroup>
-
 </Project>
