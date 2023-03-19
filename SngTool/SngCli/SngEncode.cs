@@ -161,23 +161,11 @@ namespace SngCli
                 {
                     if (conf.EncodeOpus && !fileName.EndsWith(".opus", StringComparison.OrdinalIgnoreCase))
                     {
-                        // opusenc doesn't support loading mp3 or ogg vorbis
-                        if (fileName.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase))
-                        {
-                            fileData = await AudioEncoding.EncodeMp3ToOpus(file, conf.OpusBitrate);
-                        }
-                        else if (fileName.EndsWith(".ogg", StringComparison.OrdinalIgnoreCase))
-                        {
-                            fileData = await AudioEncoding.EncodeVorbisToOpus(file, conf.OpusBitrate);
-                        }
-                        else
-                        {
-                            fileData = await AudioEncoding.EncodeFileToOpus(file, conf.OpusBitrate);
-                        }
+                        fileData = await AudioEncoding.ToOpus(file, conf.OpusBitrate);
                     }
                     else
                     {
-                        fileData = (Path.GetFileName(file), File.ReadAllBytes(file));
+                        fileData = (Path.GetFileName(file), await File.ReadAllBytesAsync(file));
                     }
                 }
                 else if (string.Equals(fileName, "song.ini", StringComparison.OrdinalIgnoreCase))
@@ -191,11 +179,11 @@ namespace SngCli
                 }
                 else if (string.Equals(fileName, "notes.mid", StringComparison.OrdinalIgnoreCase))
                 {
-                    fileData = ("notes.mid", File.ReadAllBytes(file));
+                    fileData = ("notes.mid", await File.ReadAllBytesAsync(file));
                 }
                 else if (string.Equals(fileName, "notes.chart", StringComparison.OrdinalIgnoreCase))
                 {
-                    fileData = ("notes.chart", File.ReadAllBytes(file));
+                    fileData = ("notes.chart", await File.ReadAllBytesAsync(file));
                 }
                 else if (imageRegex.IsMatch(file))
                 {
@@ -204,43 +192,40 @@ namespace SngCli
                         if (conf.EncodeJpeg)
                         {
                             var data = JpegEncoding.EncodeImageToJpeg(file, conf.JpegQuality);
-                            fileData = (fileName, data);
                         }
                         else
                         {
 
-                            fileData = ("notes.chart", File.ReadAllBytes(file));
+                            fileData = ("notes.chart", await File.ReadAllBytesAsync(file));
                         }
                     }
                     else if (fileName.StartsWith("background", StringComparison.OrdinalIgnoreCase))
                     {
                         if (conf.EncodeJpeg)
                         {
-                            var data = JpegEncoding.EncodeImageToJpeg(file, conf.JpegQuality, false, SizeTiers.None);
-                            fileData = ("background.jpg", data);
+                            fileData = await JpegEncoding.EncodeImageToJpeg(file, conf.JpegQuality, false, SizeTiers.None);
                         }
                         else
                         {
 
-                            fileData = (fileName, File.ReadAllBytes(file));
+                            fileData = (fileName, await File.ReadAllBytesAsync(file));
                         }
                     }
                     else if (fileName.StartsWith("highway", StringComparison.OrdinalIgnoreCase))
                     {
                         if (conf.EncodeJpeg)
                         {
-                            var data = JpegEncoding.EncodeImageToJpeg(file, conf.JpegQuality, false, SizeTiers.None);
-                            fileData = ("highway.jpg", data);
+                            fileData = await JpegEncoding.EncodeImageToJpeg(file, conf.JpegQuality, false, SizeTiers.None);
                         }
                         else
                         {
-                            fileData = (fileName, File.ReadAllBytes(file));
+                            fileData = (fileName, await File.ReadAllBytesAsync(file));
                         }
                     }
                 }
                 else if (!conf.ExcludeVideo && videoRegex.IsMatch(file) && fileName.StartsWith("video", StringComparison.OrdinalIgnoreCase))
                 {
-                    fileData = (fileName, File.ReadAllBytes(file));
+                    fileData = (fileName, await File.ReadAllBytesAsync(file));
                 }
 
                 if (fileData.data != null)

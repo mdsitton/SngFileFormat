@@ -105,15 +105,14 @@ namespace SngCli
         /// <param name="upscale">Enables image rescaling</param>
         /// <param name="size">Resize images to specific sizes or the nearest option lower</param>
         /// <returns>byte array of new image</returns>
-        public static byte[] EncodeImageToJpeg(string filePath, int quality = 75, bool upscale = false, SizeTiers size = SizeTiers.Size512x512)
+        public async static Task<(string fileName, byte[])> EncodeImageToJpeg(string filePath, int quality = 75, bool upscale = false, SizeTiers size = SizeTiers.Size512x512)
         {
             var ms = new MemoryStream();
 
             try
             {
-
                 using (var file = File.OpenRead(filePath))
-                using (var image = Image.Load(file))
+                using (var image = await Image.LoadAsync(file))
                 {
 
                     // Don't resize if it's not square
@@ -129,13 +128,15 @@ namespace SngCli
                         ColorType = JpegEncodingColor.Rgb,
                         SkipMetadata = true
                     };
-                    image.SaveAsJpeg(ms, encoder);
-                    Console.WriteLine($"Image Size: {image.Width}x{image.Height} Compression Ratio: {file.Length / (float)ms.Length:0.00}x");
-                    ms.Seek(0, SeekOrigin.Begin);
+                    await image.SaveAsJpegAsync(ms, encoder);
+                    await ms.FlushAsync();
 
                     if (upscale || ms.Length < file.Length)
                     {
-                        return ms.ToArray();
+                        Console.WriteLine($"Image Size: {image.Width}x{image.Height} Compression Ratio: {file.Length / (float)ms.Length:0.00}x");
+
+                        var name = Path.GetFileNameWithoutExtension(filePath);
+                        return ($"{name}.jpg", ms.ToArray());
                     }
                 }
             }
@@ -145,7 +146,7 @@ namespace SngCli
             }
 
             // Return original file if it's smaller in size or if we encountered an error
-            return File.ReadAllBytes(filePath);
+            return (Path.GetFileName(filePath), await File.ReadAllBytesAsync(filePath));
         }
     }
 }

@@ -10,32 +10,72 @@ namespace SngCli
     {
         public static bool verbose = false;
 
-        public static (string filename, byte[]? data) DecodeVorbisToWav(string filePath)
+        public static async Task<(string filename, byte[]? data)> ToOpus(string filePath, int bitRate)
         {
-            using (var file = File.OpenRead(filePath))
-            using (var vorbis = new VorbisReader(file))
+            FileInfo fileInfo = new FileInfo(filePath);
+
+            (string filename, byte[]? data) outData;
+
+            // opusenc doesn't support loading mp3 or ogg vorbis
+            if (filePath.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase))
             {
-                float[] samples = new float[vorbis.TotalSamples];
+                outData = await EncodeMp3ToOpus(filePath, bitRate);
+            }
+            else if (filePath.EndsWith(".ogg", StringComparison.OrdinalIgnoreCase))
+            {
+                outData = await EncodeVorbisToOpus(filePath, bitRate);
+            }
+            else
+            {
+                outData = await EncodeFileToOpus(filePath, bitRate);
+            }
 
-                vorbis.ReadSamples(samples, 0, samples.Length);
+            if (outData.data != null)
+            {
+                Console.WriteLine($"{filePath}: Opus Compression Ratio: {fileInfo.Length / (float)outData.data.Length:0.00}x");
+            }
+            else
+            {
+                Console.WriteLine($"{filePath}: Opus Compression failed");
+            }
+            return outData;
+        }
 
-                var data = WavFileWriter.Get16BitWavData(samples, vorbis.SampleRate, vorbis.Channels);
+        private static async Task<(string filename, byte[]? data)> DecodeVorbisToWav(string filePath)
+        {
+            using (var ms = new MemoryStream())
+            {
+                // Read file from disk async since VorbisReader isn't
+                using (var file = File.OpenRead(filePath))
+                {
+                    await file.CopyToAsync(ms);
+                }
 
-                Console.WriteLine($"{filePath}: Vorbis expansion Ratio: {(float)data.Length / file.Length:0.00}x larger");
-                return (Path.GetFileName(filePath), data);
+                using (var vorbis = new VorbisReader(ms))
+                {
+                    float[] samples = new float[vorbis.TotalSamples];
+
+                    vorbis.ReadSamples(samples, 0, samples.Length);
+
+                    var data = WavFileWriter.Get16BitWavData(samples, vorbis.SampleRate, vorbis.Channels);
+
+                    // Console.WriteLine($"{filePath}: Vorbis expansion Ratio: {(float)data.Length / ms.Length:0.00}x larger");
+                    var name = Path.GetFileNameWithoutExtension(filePath);
+                    return ($"{name}.wav", data);
+                }
             }
         }
 
-        public async static Task<(string filename, byte[]? data)> EncodeVorbisToOpus(string filePath, int bitRate)
+        private async static Task<(string filename, byte[]? data)> EncodeVorbisToOpus(string filePath, int bitRate)
         {
-            var data = DecodeVorbisToWav(filePath);
+            var data = await DecodeVorbisToWav(filePath);
             if (data.data == null)
                 return data;
             // TODO = fix the file names to use opus extension on output
             return await EncodeFileToOpus(filePath, data.data, bitRate);
         }
 
-        public async static Task<(string filename, byte[]? data)> EncodeMp3ToOpus(string filePath, int bitRate)
+        private async static Task<(string filename, byte[]? data)> EncodeMp3ToOpus(string filePath, int bitRate)
         {
             var data = await DecodeMp3ToWav(filePath);
             if (data.data == null)
@@ -56,7 +96,7 @@ namespace SngCli
         /// <summary>
         /// Encode opus file from byte array, this implementation is a bit less reliable and uses more cpu
         /// </summary>
-        public async static Task<(string filename, byte[]? data)> DecodeMp3ToWav(string filePath)
+        private async static Task<(string filename, byte[]? data)> DecodeMp3ToWav(string filePath)
         {
 
             using (var file = File.OpenRead(filePath))
@@ -72,8 +112,8 @@ namespace SngCli
                     return (fileName, null);
                 }
 
-                Console.WriteLine($"{filePath}: Mp3 -> Wav expansion Ratio: {encodeData.Length / (float)file.Length:0.00}x");
-                return (fileName, encodeData);
+                var name = Path.GetFileNameWithoutExtension(filePath);
+                return ($"{name}.wav", encodeData);
             }
 
         }
@@ -185,7 +225,7 @@ namespace SngCli
         /// <summary>
         /// Encode opus file from byte array
         /// </summary>
-        public async static Task<(string filename, byte[]? data)> EncodeFileToOpus(string filePath, byte[] inputData, int bitRate)
+        private async static Task<(string filename, byte[]? data)> EncodeFileToOpus(string filePath, byte[] inputData, int bitRate)
         {
             var args = $"--vbr --framesize 60 --bitrate {bitRate} --discard-pictures --discard-comments - -";
             var encodeData = await RunAudioProcess("opusenc", args, inputData, verbose);
@@ -198,18 +238,18 @@ namespace SngCli
                 return (fileName, null);
             }
 
-
-            Console.WriteLine($"{filePath}: Opus Compression Ratio: {inputData.Length / (float)encodeData.Length:0.00}x");
-            return (fileName, encodeData);
+            var name = Path.GetFileNameWithoutExtension(filePath);
+            return ($"{name}.opus", encodeData);
 
         }
 
         /// <summary>
         /// Encode opus file from path
         /// </summary>
-        public async static Task<(string filename, byte[]? data)> EncodeFileToOpus(string filePath, int bitRate)
+        private async static Task<(string filename, byte[]? data)> EncodeFileToOpus(string filePath, int bitRate)
         {
-            return await EncodeFileToOpus(filePath, File.ReadAllBytes(filePath), bitRate);
+            var data = await File.ReadAllBytesAsync(filePath);
+            return await EncodeFileToOpus(filePath, data, bitRate);
         }
     }
 }
