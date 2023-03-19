@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 using SngLib;
 using SongLib;
+using static SngCli.JpegEncoding;
 
 namespace SngCli
 {
@@ -253,7 +254,10 @@ namespace SngCli
             }
         }
 
-        private static async Task EncodeSong(string songFolder, bool opusEncode, int opusBitrate, string outputFolder)
+        private static async Task EncodeSong(string songFolder,
+        bool opusEncode, int opusBitrate,
+        bool jpegEncode, int jpegQuality,
+        string outputFolder)
         {
             SngFile sngFile = new SngFile();
             Random.Shared.NextBytes(sngFile.Seed);
@@ -308,6 +312,38 @@ namespace SngCli
                 else if (string.Equals(fileName, "notes.chart", StringComparison.OrdinalIgnoreCase))
                 {
                     fileData = ("notes.chart", File.ReadAllBytes(file));
+                }
+                else if (
+                    fileName.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ||
+                    fileName.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
+                    fileName.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (fileName.StartsWith("album", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (jpegEncode)
+                        {
+                            var data = JpegEncoding.EncodeImageToJpeg(file, jpegQuality);
+                            fileData = (fileName, data);
+                        }
+                        else
+                        {
+
+                            fileData = ("notes.chart", File.ReadAllBytes(file));
+                        }
+                    }
+                    else if (fileName.StartsWith("background", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (jpegEncode)
+                        {
+                            var data = JpegEncoding.EncodeImageToJpeg(file, jpegQuality, false, SizeTiers.None);
+                            fileData = ("background.jpg", data);
+                        }
+                        else
+                        {
+
+                            fileData = (fileName, File.ReadAllBytes(file));
+                        }
+                    }
                 }
 
                 if (fileData.data != null)
@@ -374,14 +410,14 @@ namespace SngCli
             {
                 foreach (var songFolder in songFolders)
                 {
-                    await EncodeSong(songFolder, encodeOpus, opusBitrate, output);
+                    await EncodeSong(songFolder, encodeOpus, opusBitrate, encodeJpeg, jpegQuality, output);
                 }
             }
             else
             {
                 await Parallel.ForEachAsync(songFolders, async (songFolder, token) =>
                 {
-                    await EncodeSong(songFolder, encodeOpus, opusBitrate, output);
+                    await EncodeSong(songFolder, encodeOpus, opusBitrate, encodeJpeg, jpegQuality, output);
                 });
             }
         }

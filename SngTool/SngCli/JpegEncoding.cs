@@ -100,14 +100,15 @@ namespace SngCli
         /// by 4 and mostly are power of twos with a few between them to even out the range.
         /// resizing is automatically disabled if the image is not the same width/height
         /// </summary>
-        /// <param name="file">File stream of input image</param>
+        /// <param name="filePath">File path of input image</param>
         /// <param name="quality">Image quality level</param>
         /// <param name="upscale">Enables image rescaling</param>
         /// <param name="size">Resize images to specific sizes or the nearest option lower</param>
-        /// <returns></returns>
-        public static MemoryStream EncodeImageToJpeg(Stream file, int quality = 75, bool upscale = false, SizeTiers size = SizeTiers.Size512x512)
+        /// <returns>byte array of new image</returns>
+        public static byte[] EncodeImageToJpeg(string filePath, int quality = 75, bool upscale = false, SizeTiers size = SizeTiers.Size512x512)
         {
             var ms = new MemoryStream();
+            using (var file = File.OpenRead(filePath))
             using (var image = Image.Load(file))
             {
 
@@ -127,7 +128,7 @@ namespace SngCli
                 image.SaveAsJpeg(ms, encoder);
                 Console.WriteLine($"Image Size: {image.Width}x{image.Height} Compression Ratio: {file.Length / (float)ms.Length:0.00}x");
                 ms.Seek(0, SeekOrigin.Begin);
-                return ms;
+                return ms.ToArray();
             }
         }
     }
