@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using NVorbis;
 
-namespace SngCli
+namespace SongLib
 {
     public class AudioEncoding
     {

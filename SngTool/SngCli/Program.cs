@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
-using SngLib;
-using SongLib;
-using static SngCli.JpegEncoding;
 
 namespace SngCli
 {

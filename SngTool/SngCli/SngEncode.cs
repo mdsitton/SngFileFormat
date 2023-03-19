@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using SngLib;
 using SongLib;
-using static SngCli.JpegEncoding;
+using static SongLib.JpegEncoding;
 
 namespace SngCli
 {

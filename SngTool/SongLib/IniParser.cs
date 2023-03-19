@@ -6,7 +6,6 @@ using System.Text;
 
 namespace SongLib
 {
-
     public class IniFile
     {
         private readonly Dictionary<string, Dictionary<string, string>> sections;

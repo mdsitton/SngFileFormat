@@ -1,7 +1,7 @@
 using System;
 using SixLabors.ImageSharp.Formats.Jpeg;
 
-namespace SngCli
+namespace SongLib
 {
     public static class JpegEncoding
     {
