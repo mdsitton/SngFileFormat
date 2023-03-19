@@ -6,25 +6,25 @@ using SongLib;
 
 namespace SngCli
 {
-    public class SngEncodingConfig
+    internal class SngEncodingConfig
     {
         public string? InputPath;
         public string? OutputPath;
 
         // Program options
         public bool NoThreads;
-        public bool ExcludeVideo;
+        public bool VideoExclude;
         public bool Verbose;
+        public bool SkipUnknown;
 
         // JPEG options
-        public bool EncodeJpeg;
-        public bool ForceSize;
-        public bool Resize;
-        public JpegEncoding.SizeTiers Size = JpegEncoding.SizeTiers.Size512x512;
+        public bool JpegEncode;
+        public bool AlbumUpscale;
+        public JpegEncoding.SizeTiers AlbumSize = JpegEncoding.SizeTiers.Size512x512;
         public int JpegQuality = 75;
 
         // OPUS options
-        public bool EncodeOpus;
+        public bool OpusEncode;
         public int OpusBitrate = 80;
 
         private static SngEncodingConfig? _instance;
@@ -92,12 +92,12 @@ namespace SngCli
             }
 
             // Bool flags we just need to make sure the keys exist
-            ExcludeVideo = args.TryGetValue("excludeVideo", out _);
-            EncodeOpus = args.TryGetValue("encodeOpus", out _);
-            EncodeJpeg = args.TryGetValue("encodeJpeg", out _);
-            ForceSize = args.TryGetValue("forceSize", out _);
-            Resize = args.TryGetValue("resize", out _);
+            VideoExclude = args.TryGetValue("videoExclude", out _);
+            OpusEncode = args.TryGetValue("opusEncode", out _);
+            JpegEncode = args.TryGetValue("jpegEncode", out _);
+            AlbumUpscale = args.TryGetValue("albumUpscale", out _);
             NoThreads = args.TryGetValue("noThreads", out _);
+            SkipUnknown = args.TryGetValue("skipUnknown", out _);
 
             AudioEncoding.verbose = Verbose = args.TryGetValue("verbose", out _);
 
@@ -119,14 +119,14 @@ namespace SngCli
                 }
             }
 
-            if (args.TryGetValue("resize", out string? newSize) && newSize != null)
+            if (args.TryGetValue("albumResize", out string? albumSize) && albumSize != null)
             {
-                if (!ValidSize(newSize))
+                if (!ValidSize(albumSize))
                 {
-                    Console.WriteLine($"Value for resize is not valid {newSize}");
+                    Console.WriteLine($"Value for albumResize is not valid {albumSize}");
                     return;
                 }
-                Size = SizeStrToEnum(newSize);
+                AlbumSize = SizeStrToEnum(albumSize);
             }
         }
     }

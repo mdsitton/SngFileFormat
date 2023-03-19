@@ -5,7 +5,6 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using SngLib;
 using SongLib;
-using static SongLib.JpegEncoding;
 
 namespace SngCli
 {
@@ -142,6 +141,27 @@ namespace SngCli
         private static readonly string audioPattern = @"(?i).*\.(wav|opus|ogg|mp3)$";
         private static Regex audioRegex = new Regex(audioPattern, RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
+        private static readonly string[] supportedImageNames = { "background", "highway", "album" };
+
+        private static readonly string[] supportedAudioNames =
+        {
+            "guitar",
+            "bass",
+            "rhythm",
+            "vocals",
+            "vocals_1",
+            "vocals_2",
+            "drums",
+            "drums_1",
+            "drums_2",
+            "drums_3",
+            "drums_4",
+            "keys",
+            "song",
+            "crowd",
+            "preview"
+        };
+
         private static async Task EncodeSong(string songFolder)
         {
             var conf = SngEncodingConfig.Instance;
@@ -158,13 +178,20 @@ namespace SngCli
                 var fileName = Path.GetFileName(file);
                 if (audioRegex.IsMatch(file))
                 {
-                    if (conf.EncodeOpus && !fileName.EndsWith(".opus", StringComparison.OrdinalIgnoreCase))
+                    foreach (var audioName in supportedAudioNames)
                     {
-                        fileData = await AudioEncoding.ToOpus(file, conf.OpusBitrate);
-                    }
-                    else
-                    {
-                        fileData = (Path.GetFileName(file), await File.ReadAllBytesAsync(file));
+                        if (fileName.StartsWith(audioName, StringComparison.OrdinalIgnoreCase) || !conf.SkipUnknown)
+                        {
+                            if (conf.OpusEncode && !fileName.EndsWith(".opus", StringComparison.OrdinalIgnoreCase))
+                            {
+                                fileData = await AudioEncoding.ToOpus(file, conf.OpusBitrate);
+                            }
+                            else
+                            {
+                                fileData = (fileName, await File.ReadAllBytesAsync(file));
+                            }
+                            continue;
+                        }
                     }
                 }
                 else if (string.Equals(fileName, "song.ini", StringComparison.OrdinalIgnoreCase))
@@ -188,21 +215,9 @@ namespace SngCli
                 {
                     if (fileName.StartsWith("album", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (conf.EncodeJpeg)
+                        if (conf.JpegEncode)
                         {
-                            fileData = await JpegEncoding.EncodeImageToJpeg(file, conf.JpegQuality, conf.ForceSize, conf.Size);
-                        }
-                        else
-                        {
-
-                            fileData = ("notes.chart", await File.ReadAllBytesAsync(file));
-                        }
-                    }
-                    else if (fileName.StartsWith("background", StringComparison.OrdinalIgnoreCase))
-                    {
-                        if (conf.EncodeJpeg)
-                        {
-                            fileData = await JpegEncoding.EncodeImageToJpeg(file, conf.JpegQuality, false, SizeTiers.None);
+                            fileData = await JpegEncoding.EncodeImageToJpeg(file, conf.JpegQuality, conf.AlbumUpscale, conf.AlbumSize);
                         }
                         else
                         {
@@ -210,26 +225,39 @@ namespace SngCli
                             fileData = (fileName, await File.ReadAllBytesAsync(file));
                         }
                     }
-                    else if (fileName.StartsWith("highway", StringComparison.OrdinalIgnoreCase))
+                    else
                     {
-                        if (conf.EncodeJpeg)
+                        foreach (var imageName in supportedImageNames)
                         {
-                            fileData = await JpegEncoding.EncodeImageToJpeg(file, conf.JpegQuality, false, SizeTiers.None);
+                            if (fileName.StartsWith(imageName, StringComparison.OrdinalIgnoreCase) || !conf.SkipUnknown)
+                            {
+                                if (conf.JpegEncode)
+                                {
+                                    fileData = await JpegEncoding.EncodeImageToJpeg(file, conf.JpegQuality, false, JpegEncoding.SizeTiers.None);
+                                }
+                                else
+                                {
+
+                                    fileData = (fileName, await File.ReadAllBytesAsync(file));
+                                }
+                                continue;
+                            }
                         }
-                        else
-                        {
-                            fileData = (fileName, await File.ReadAllBytesAsync(file));
-                        }
+
                     }
                 }
-                else if (!conf.ExcludeVideo && videoRegex.IsMatch(file) && fileName.StartsWith("video", StringComparison.OrdinalIgnoreCase))
+                else if (!conf.VideoExclude && videoRegex.IsMatch(file) && fileName.StartsWith("video", StringComparison.OrdinalIgnoreCase))
+                {
+                    fileData = (fileName, await File.ReadAllBytesAsync(file));
+                }
+                else if (!conf.SkipUnknown) // Include other unknown files
                 {
                     fileData = (fileName, await File.ReadAllBytesAsync(file));
                 }
 
                 if (fileData.data != null)
                 {
-                    sngFile.AddFile(fileData.name, new SngFile.FileData { Masked = true, Contents = fileData.data });
+                    sngFile.AddFile(fileData.name.ToLowerInvariant(), new SngFile.FileData { Masked = true, Contents = fileData.data });
                 }
             }
             var folder = Path.GetDirectoryName(songFolder)!;
@@ -243,7 +271,7 @@ namespace SngCli
 
             var saveFile = $"{Path.GetFileName(songFolder)}.sng";
             var fullPath = Path.Combine(outputFolder, saveFile);
-            Console.WriteLine($"Saving file: {fullPath}");
+            Console.WriteLine($"{fullPath} Saving");
             SngSerializer.SaveSngFile(sngFile, fullPath);
         }
 

@@ -15,41 +15,43 @@ namespace SngCli
             "i", "input",
             "verbose",
             "noThreads",
-            "excludeVideo",
-            "encodeOpus",
+            "videoExclude",
+            "opusEncode",
             "opusBitrate",
-            "encodeJpeg",
+            "jpegEncode",
             "jpegQuality",
-            "forceSize",
-            "resize"
+            "albumUpscale",
+            "albumResize",
+            "skipUnknown"
         };
 
         public static void DisplayHelp()
         {
             Console.WriteLine("Usage: SngCli [options]");
             Console.WriteLine("Options:");
-            Console.WriteLine("  -h, --help          Show help message");
-            Console.WriteLine("  -v, --version       Display version information");
-            Console.WriteLine("      --verbose       Display more information such as audio encoder output.");
-            Console.WriteLine("  -o, --out FOLDER    Specify output folder location");
-            Console.WriteLine("  -i, --input FOLDER  Specify input folder to search for song folders");
-            Console.WriteLine("      --noThreads     Disable threading only process one song at a time. Can also be useful when a song has an error along with --verbose.");
-            Console.WriteLine("      --excludeVideo  Exclude video files, CH doesn't support videos in sng files so they can be excluded to reduce size.");
-            Console.WriteLine("      --encodeOpus    Encode all audio to opus");
-            Console.WriteLine("      --opusBitrate   Set opus encoder bitrate, default: 80");
-            Console.WriteLine("      --encodeJpeg    Encode all images to JPEG");
-            Console.WriteLine("      --jpegQuality   JPEG encoding quality, default: 75");
-            Console.WriteLine("      --forceSize     Enable forcing image size to the specified resolution, by default if the image is smaller than specified the image is not resized.");
-            Console.WriteLine("      --resize        Resize images to set size, default: 512x512");
-            Console.WriteLine("                          Supported Sizes:");
-            Console.WriteLine("                              Nearest: This uses next size below the image size");
-            Console.WriteLine("                              256x256");
-            Console.WriteLine("                              384x384");
-            Console.WriteLine("                              512x512");
-            Console.WriteLine("                              768x768");
-            Console.WriteLine("                              1024x1024");
-            Console.WriteLine("                              1536x1536");
-            Console.WriteLine("                              2048x2048");
+            Console.WriteLine("  -h, --help            Show help message");
+            Console.WriteLine("  -v, --version         Display version information");
+            Console.WriteLine("      --verbose         Display more information such as audio encoder output.");
+            Console.WriteLine("  -o, --out FOLDER      Specify output folder location");
+            Console.WriteLine("  -i, --input FOLDER    Specify input folder to search for song folders");
+            Console.WriteLine("      --skipUnknown     Skip unknown files.By default unknown files are included (All audio and images of supported formats are transcoded)");
+            Console.WriteLine("      --noThreads       Disable threading only process one song at a time. Can also be useful when a song has an error along with --verbose.");
+            Console.WriteLine("      --videoExclude    Exclude video files");
+            Console.WriteLine("      --opusEncode      Encode all audio to opus");
+            Console.WriteLine("      --opusBitrate     Set opus encoder bitrate, default: 80");
+            Console.WriteLine("      --jpegEncode      Encode all images to JPEG");
+            Console.WriteLine("      --jpegQuality     JPEG encoding quality, default: 75");
+            Console.WriteLine("      --albumUpscale    Enable upscaling album art, by default images are only shrunk.");
+            Console.WriteLine("      --albumResize     Resize album art to set size. Smaller resolutions load faster in-game, Default size: 512x512");
+            Console.WriteLine("                            Supported Sizes:");
+            Console.WriteLine("                                Nearest - This uses next size below the image size");
+            Console.WriteLine("                                256x256");
+            Console.WriteLine("                                384x384");
+            Console.WriteLine("                                512x512");
+            Console.WriteLine("                                768x768");
+            Console.WriteLine("                                1024x1024");
+            Console.WriteLine("                                1536x1536");
+            Console.WriteLine("                                2048x2048");
         }
 
         private static Dictionary<string, string>? ProcessArguments(string[] args)
