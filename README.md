@@ -38,7 +38,7 @@
  * for i = 0 to size(wrangled_audio_file_bytes) - 1:
  * 
  *    // Calculate the XOR key based on the current index and seed array
- *    xor_key = (seed[i % 16] XOR i) AND 0xFF // You can cast to a byte instead of "AND 0xFF" if your language supports it
+ *    xor_key = seed[i % 16] XOR (i AND 0xFF) // You can cast to a byte instead of "AND 0xFF" if your language supports it
  * 
  *    // XOR each byte in wrangled_audio_file_bytes with the xor_key
  *    clear_audio_file_bytes[i] = wrangled_audio_file_bytes[i] XOR xor_key
