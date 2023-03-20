@@ -9,12 +9,9 @@ namespace SngCli
 {
     public static class SngDecode
     {
-        private static IEnumerable<string> FindAllSngFiles(string rootFolder)
+        private static string[] FindAllSngFiles(string rootFolder)
         {
-            foreach (string subfolder in Directory.EnumerateFiles(rootFolder, "*.sng", SearchOption.AllDirectories))
-            {
-                yield return subfolder;
-            }
+            return Directory.GetFiles(rootFolder, "*.sng", SearchOption.AllDirectories);
         }
 
         private static void SerializeMetadata(SngFile sngFile, string savePath)
@@ -104,7 +101,7 @@ namespace SngCli
 
             var relative = Path.GetRelativePath(conf.InputPath!, parentFolder!);
             var outputFolder = Path.Combine(Path.GetFullPath(conf.OutputPath!), relative, folderName);
-            Console.WriteLine(outputFolder);
+            ConMan.Out(outputFolder);
             SngFile sngFile = SngSerializer.LoadSngFile(sngPath);
 
             if (!Directory.Exists(outputFolder))
@@ -120,7 +117,9 @@ namespace SngCli
             {
                 await File.WriteAllBytesAsync(Path.Combine(outputFolder, name), data.Contents!);
             }
+            ConMan.UpdateProgress(Interlocked.Increment(ref completedSongs));
         }
+        private static int completedSongs;
 
         public async static Task ProcessSongs()
         {
@@ -128,25 +127,32 @@ namespace SngCli
 
             if (!Directory.Exists(conf.InputPath))
             {
-                Console.WriteLine("Input folder does not exist");
+                ConMan.Out("Input folder does not exist");
                 Program.DisplayHelp();
                 return;
             }
 
-            if (conf.NoThreads)
+            var songs = FindAllSngFiles(conf.InputPath!);
+            ConMan.EnableProgress(songs.Length);
+
+
+            await Utils.ForEachAsync(songs, async (sngFile, token) =>
             {
-                foreach (var sngFile in FindAllSngFiles(conf.InputPath!))
+                try
                 {
                     await DecodeSong(sngFile);
                 }
-            }
-            else
-            {
-                await Parallel.ForEachAsync(FindAllSngFiles(conf.InputPath!), async (sngFile, token) =>
+                catch (Exception e)
                 {
-                    await DecodeSong(sngFile);
-                });
-            }
+                    // Con.DisableProgress();
+                    // Console.WriteLine(sngFile);
+                    // Console.WriteLine(e);
+                    // Environment.Exit(1);
+                    ConMan.Out($"{sngFile} ERROR! \\n{e}");
+                }
+            }, conf.NoThreads ? 1 : -1);
+
+            ConMan.DisableProgress();
         }
 
     }

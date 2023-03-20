@@ -165,7 +165,7 @@ namespace SngCli
         private static async Task EncodeSong(string songFolder)
         {
             var conf = SngEncodingConfig.Instance;
-            Console.WriteLine($"Starting: {songFolder}");
+            ConMan.Out($"Starting: {songFolder}");
 
             SngFile sngFile = new SngFile();
             Random.Shared.NextBytes(sngFile.Seed);
@@ -203,7 +203,7 @@ namespace SngCli
                 {
                     if (!ParseMetadata(sngFile, file))
                     {
-                        Console.WriteLine($"Error: Failed to parse metadata for chart {songFolder}");
+                        ConMan.Out($"Error: Failed to parse metadata for chart {songFolder}");
                         return;
                     }
                     continue;
@@ -277,10 +277,12 @@ namespace SngCli
 
             var saveFile = $"{Path.GetFileName(songFolder)}.sng";
             var fullPath = Path.Combine(outputFolder, saveFile);
-            Console.WriteLine($"{fullPath} Saving compression ratio: {startingSize / (double)endSize:0.00}x");
+            ConMan.Out($"{fullPath} Saving compression ratio: {startingSize / (double)endSize:0.00}x");
             SngSerializer.SaveSngFile(sngFile, fullPath);
+            ConMan.UpdateProgress(Interlocked.Increment(ref completedSongs));
         }
 
+        private static int completedSongs;
 
         public static async Task ProcessSongs()
         {
@@ -288,28 +290,32 @@ namespace SngCli
 
             if (!Directory.Exists(conf.InputPath))
             {
-                Console.WriteLine("Input folder does not exist");
+                ConMan.Out("Input folder does not exist");
                 Program.DisplayHelp();
                 return;
             }
 
-            Console.WriteLine("SngCli scanning song folders");
+            ConMan.Out("SngCli scanning song folders");
 
             List<string> songFolders = SearchForFolders(conf.InputPath!);
-            if (conf.NoThreads)
+
+            ConMan.EnableProgress(songFolders.Count);
+            await Utils.ForEachAsync(songFolders, async (songFolder, token) =>
             {
-                foreach (var songFolder in songFolders)
+                try
                 {
                     await EncodeSong(songFolder);
                 }
-            }
-            else
-            {
-                await Parallel.ForEachAsync(songFolders, async (songFolder, token) =>
+                catch (Exception e)
                 {
-                    await EncodeSong(songFolder);
-                });
-            }
+                    // Con.DisableProgress();
+                    // Console.WriteLine(sngFile);
+                    // Console.WriteLine(e);
+                    // Environment.Exit(1);
+                    ConMan.Out($"{songFolders} ERROR! \\n{e}");
+                }
+            }, conf.NoThreads ? 1 : -1);
+            ConMan.DisableProgress();
         }
     }
 }

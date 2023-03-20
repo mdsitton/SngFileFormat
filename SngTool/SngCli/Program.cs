@@ -183,8 +183,6 @@ namespace SngCli
                     await SngDecode.ProcessSongs();
                     break;
             }
-
-
         }
     }
 }
