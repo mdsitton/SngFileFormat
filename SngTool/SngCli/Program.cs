@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
+using SongLib;
 
 namespace SngCli
 {
     class Program
     {
+
+        public static bool Verbose = false;
 
         private static readonly List<string> AllowedArguments = new List<string>
         {
@@ -90,6 +93,9 @@ namespace SngCli
                     case "version":
                         DisplayHelp();
                         return null;
+                    case "verbose":
+                        AudioEncoding.verbose = Verbose = true;
+                        continue;
                     default:
                         continue;
                 }

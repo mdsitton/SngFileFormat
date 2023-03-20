@@ -14,7 +14,6 @@ namespace SngCli
         // Program options
         public bool NoThreads;
         public bool VideoExclude;
-        public bool Verbose;
         public bool SkipUnknown;
 
         // JPEG options
@@ -98,8 +97,6 @@ namespace SngCli
             AlbumUpscale = args.TryGetValue("albumUpscale", out _);
             NoThreads = args.TryGetValue("noThreads", out _);
             SkipUnknown = args.TryGetValue("skipUnknown", out _);
-
-            AudioEncoding.verbose = Verbose = args.TryGetValue("verbose", out _);
 
             if (args.TryGetValue("opusBitrate", out string? bitrateStr) && bitrateStr != null)
             {
