@@ -101,7 +101,7 @@ namespace SngLib
                 throw new NotSupportedException("Unsupported SNG file version");
 
             using var fs = new FileStream(path, FileMode.Create, FileAccess.Write);
-            using var bw = new BinaryWriter(fs, Encoding.UTF8);
+            using var bw = new BinaryWriter(fs);
 
             // Write header
             bw.Write(FileIdentifierBytes);
@@ -112,17 +112,24 @@ namespace SngLib
             bw.Write((ulong)sngFile.Metadata.Count);
             foreach (var metadata in sngFile.Metadata)
             {
-                bw.Write(metadata.Key.Length);
-                bw.Write(Encoding.UTF8.GetBytes(metadata.Key));
-                bw.Write(metadata.Value.Length);
-                bw.Write(Encoding.UTF8.GetBytes(metadata.Value));
+                var bytesKey = Encoding.UTF8.GetBytes(metadata.Key);
+                bw.Write(bytesKey.Length);
+                bw.Write(bytesKey);
+
+                var bytesValue = Encoding.UTF8.GetBytes(metadata.Value);
+                bw.Write(bytesValue.Length);
+                bw.Write(bytesValue);
             }
 
-            // Calculate and store file content positions
+            // Calculate end of file metadata section
+            // This information is used to calculate the file index positions
             long contentPosition = bw.BaseStream.Position;
             contentPosition += sizeof(ulong); // File count
             foreach (var fileEntry in sngFile.Files)
             {
+                if (fileEntry.Value.Contents == null)
+                    continue;
+
                 contentPosition += sizeof(int) + Encoding.UTF8.GetByteCount(fileEntry.Key); // FileName length and FileName
                 contentPosition += sizeof(byte); // Masked
                 contentPosition += sizeof(ulong) * 2; // Contents length and Contents index
@@ -138,6 +145,7 @@ namespace SngLib
                 byte[] fileNameBytes = Encoding.UTF8.GetBytes(fileEntry.Key);
                 bw.Write(fileNameBytes.Length);
                 bw.Write(fileNameBytes);
+
                 bw.Write(fileEntry.Value.Masked ? (byte)1 : (byte)0);
                 bw.Write((ulong)fileEntry.Value.Contents.Length);
                 bw.Write((ulong)contentPosition);
