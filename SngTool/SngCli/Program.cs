@@ -161,6 +161,7 @@ namespace SngCli
             {
                 Console.WriteLine("No command entered");
                 DisplayHelp();
+                return;
             }
             (var command, args) = GetCommandArg(args);
 
