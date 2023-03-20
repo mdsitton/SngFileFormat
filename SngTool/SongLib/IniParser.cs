@@ -96,6 +96,9 @@ namespace SongLib
 
                     foreach (var keyValue in section.Value)
                     {
+                        // skip empty fields
+                        if (string.IsNullOrEmpty(keyValue.Value))
+                            continue;
                         writer.WriteLine($"{keyValue.Key}={keyValue.Value}");
                     }
                 }

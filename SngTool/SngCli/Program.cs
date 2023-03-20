@@ -30,12 +30,14 @@ namespace SngCli
 
         public static void DisplayHelp()
         {
-            Console.WriteLine("Usage: SngCli [options]");
+            Console.WriteLine("Usage: SngCli [command] [options]");
+
             Console.WriteLine("Options:");
             Console.WriteLine("  -h, --help            Show help message");
             Console.WriteLine("  -v, --version         Display version information");
             Console.WriteLine("      --verbose         Display more information such as audio encoder output.");
-            Console.WriteLine("  -o, --out FOLDER      Specify output folder location");
+            Console.WriteLine("\nencode: ");
+            Console.WriteLine("  -o, --out FOLDER      Specify output folder location for SNG files");
             Console.WriteLine("  -i, --input FOLDER    Specify input folder to search for song folders");
             Console.WriteLine("      --skipUnknown     Skip unknown files.By default unknown files are included (All audio and images of supported formats are transcoded)");
             Console.WriteLine("      --noThreads       Disable threading only process one song at a time. Can also be useful when a song has an error along with --verbose.");
@@ -55,6 +57,10 @@ namespace SngCli
             Console.WriteLine("                                1024x1024");
             Console.WriteLine("                                1536x1536");
             Console.WriteLine("                                2048x2048");
+            Console.WriteLine("\ndecode: ");
+            Console.WriteLine("  -o, --out FOLDER      Specify output folder location for extracted song folders");
+            Console.WriteLine("  -i, --input FOLDER    Specify input folder to search for SNG files");
+            Console.WriteLine("      --noThreads       Disable threading only process one song at a time.");
         }
 
         private static Dictionary<string, string>? ProcessArguments(string[] args)
@@ -136,17 +142,48 @@ namespace SngCli
             return parsedArguments;
         }
 
+
+        static (string, string[]) GetCommandArg(string[] args)
+        {
+            if (args.Length == 0)
+            {
+                throw new ArgumentException("No arguments provided.");
+            }
+
+            string firstArg = args[0];
+            string[] remainingArgs = args.Skip(1).ToArray();
+            return (firstArg, remainingArgs);
+        }
+
         static async Task Main(string[] args)
         {
+            if (args.Length == 0)
+            {
+                Console.WriteLine("No command entered");
+                DisplayHelp();
+            }
+            (var command, args) = GetCommandArg(args);
+
             var cliArgs = ProcessArguments(args);
 
             if (cliArgs == null)
                 return;
 
-            // TODO - Implement encode vs decode vs inspect commands
-            var encodeConfig = new SngEncodingConfig(cliArgs);
 
-            await SngEncode.ProcessSongs();
+            // Commands
+            switch (command)
+            {
+                case "encode":
+                    var encodeConfig = new SngEncodingConfig(cliArgs);
+                    await SngEncode.ProcessSongs();
+                    break;
+                case "decode":
+                    var decodeConfig = new SngDecodingOptions(cliArgs);
+                    await SngDecode.ProcessSongs();
+                    break;
+            }
+
+
         }
     }
 }
