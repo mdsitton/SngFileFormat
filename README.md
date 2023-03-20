@@ -6,7 +6,6 @@
 
 ```jsx
 [header]
-[metadata_0] ... [metadata_M]
 [file_0] ... [file_F]
 ```
 
@@ -17,9 +16,18 @@
 [version]						// The .sng format version (uint64)
 [seed]							// Randomly selected bytes to use when masking files (16 bytes)
 [M]								// The number of [metadata] sections (uint64)
-[Mstart_0] ... [Mstart_M]		// The first byte index of each [metadata] section (uint64 each)
+[metadata_0] ... [metadata_M]   // [metadata] sections
 [F]								// The number of [file] and [fileMeta] sections (uint64)
 [fileMeta_0] ... [fileMeta_F]	// See [fileMeta] below
+```
+
+### `[metadata]` (represents a single key/value pair)
+
+```jsx
+[keyLen]		// The number of bytes in [key] (int32)
+[key]			// The metadata's key (UTF-8 string)
+[valueLen]		// The number of bytes in [value] (int32)
+[value]			// The metadata's value (UTF-8 string)
 ```
 
 ### `[fileMeta]` (contains the metadata of each `[file]` section)
@@ -44,16 +52,6 @@
  *    clear_audio_file_bytes[i] = wrangled_audio_file_bytes[i] XOR xor_key
  */
 ```
-
-### `[metadata]` (represents a single key/value pair)
-
-```jsx
-[keyLen]		// The number of bytes in [key] (int32)
-[key]			// The metadata's key (UTF-8 string)
-[valueLen]		// The number of bytes in [value] (int32)
-[value]			// The metadata's value (UTF-8 string)
-```
-
 
 ### `[file]` (contains the binary contents of a single file)
 
