@@ -100,8 +100,8 @@ namespace SngLib
             if (sngFile.Version != SngFile.CurrentVersion)
                 throw new NotSupportedException("Unsupported SNG file version");
 
-            using var fs = new FileStream(path, FileMode.Create, FileAccess.Write);
-            using var bw = new BinaryWriter(fs);
+            using var ms = new MemoryStream();
+            using var bw = new BinaryWriter(ms);
 
             // Write header
             bw.Write(FileIdentifierBytes);
@@ -167,6 +167,7 @@ namespace SngLib
                 }
                 bw.Write(contents);
             }
+            File.WriteAllBytes(path, ms.ToArray());
         }
     }
 }
