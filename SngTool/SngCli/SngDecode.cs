@@ -126,6 +126,13 @@ namespace SngCli
         {
             var conf = SngDecodingOptions.Instance;
 
+            if (!Directory.Exists(conf.InputPath))
+            {
+                Console.WriteLine("Input folder does not exist");
+                Program.DisplayHelp();
+                return;
+            }
+
             if (conf.NoThreads)
             {
                 foreach (var sngFile in FindAllSngFiles(conf.InputPath!))

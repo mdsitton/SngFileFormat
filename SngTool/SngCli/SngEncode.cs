@@ -286,6 +286,13 @@ namespace SngCli
         {
             var conf = SngEncodingConfig.Instance;
 
+            if (!Directory.Exists(conf.InputPath))
+            {
+                Console.WriteLine("Input folder does not exist");
+                Program.DisplayHelp();
+                return;
+            }
+
             Console.WriteLine("SngCli scanning song folders");
 
             List<string> songFolders = SearchForFolders(conf.InputPath!);
