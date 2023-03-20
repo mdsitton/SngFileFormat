@@ -1,0 +1,12 @@
+
+uint64 j, i;
+uint64 len;
+for( j = 0; j < file.F; ++j )
+{
+    // ubyte contents[] = file.File[j].contents;
+    len = file.fileMeta[j].contentsLen;
+    for( i = 0; i < len; ++i )
+    {
+        file.File[j].contents[i] ^= (file.seed[i % 16] ^ (i & 0xFF));
+    }
+}

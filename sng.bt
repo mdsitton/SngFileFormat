@@ -1,0 +1,25 @@
+// SNG Specification Template
+// .sng is a simple and generic binary container format
+struct {
+    uchar fileIdentifier[6]; // SNGPKG - 0x53 0x4E 0x47 0x50 0x4b 0x47
+    uint64 version;
+    ubyte seed[16];
+    uint64 M;
+    struct {
+        int32 keyLen;
+        char key[keyLen];
+        int32 valueLen;
+        char value[valueLen];
+    } metadata[M]<optimize=false>;
+    uint64 F;
+    struct {
+        int32 filenameLen;
+        char filename[filenameLen];
+        ubyte masked;
+        uint64 contentsLen;
+        uint64 contentsIndex;
+    } fileMeta[F]<optimize=false>;
+    struct FileData{
+        ubyte contents[fileMeta.contentsLen];
+    } File[F]<optimize=false>;
+} file;
