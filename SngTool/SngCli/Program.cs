@@ -41,7 +41,7 @@ namespace SngCli
             Console.WriteLine("      --noThreads       Disable threading only process one song at a time. Can also be useful when a song has an error along with --verbose.");
             Console.WriteLine("      --videoExclude    Exclude video files");
             Console.WriteLine("      --opusEncode      Encode all audio to opus");
-            Console.WriteLine("      --opusBitrate     Set opus encoder bitrate, default: 80");
+            Console.WriteLine("      --opusBitrate     Set opus encoder bitrate, default: 128");
             Console.WriteLine("      --jpegEncode      Encode all images to JPEG");
             Console.WriteLine("      --jpegQuality     JPEG encoding quality, default: 75");
             Console.WriteLine("      --albumUpscale    Enable upscaling album art, by default images are only shrunk.");

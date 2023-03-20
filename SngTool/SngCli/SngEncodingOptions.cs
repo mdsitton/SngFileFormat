@@ -24,7 +24,7 @@ namespace SngCli
 
         // OPUS options
         public bool OpusEncode;
-        public int OpusBitrate = 80;
+        public int OpusBitrate = 128;
 
         private static SngEncodingConfig? _instance;
         public static SngEncodingConfig Instance => _instance ?? throw new InvalidOperationException("Not initialized");
