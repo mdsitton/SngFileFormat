@@ -122,7 +122,6 @@ namespace SngCli
             }
         }
 
-
         public async static Task ProcessSongs()
         {
             var conf = SngDecodingOptions.Instance;
