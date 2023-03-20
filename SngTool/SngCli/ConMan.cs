@@ -6,7 +6,7 @@ namespace SngCli
 {
     public static class ConMan
     {
-        private static int progressItems;
+        public static int ProgressItems { get; set; }
         private static int progress;
         private static Stopwatch stopwatch;
         private static readonly object consoleLock = new object();
@@ -30,7 +30,7 @@ namespace SngCli
 
         public static void EnableProgress(int totalItems)
         {
-            progressItems = totalItems;
+            ProgressItems = totalItems;
             Console.CursorVisible = false;
             progressActive = true;
             progress = 0;
@@ -59,7 +59,7 @@ namespace SngCli
             Console.WriteLine();
             progressActive = false;
             errorDisableOutput = error;
-            progressItems = 0;
+            ProgressItems = 0;
             Console.CursorVisible = true;
             stopwatch.Reset();
             updateThread = null;
@@ -114,7 +114,7 @@ namespace SngCli
             Console.CursorTop = Console.WindowTop + Console.WindowHeight - 1;
 
 
-            float percent = (float)progress / progressItems;
+            float percent = (float)progress / ProgressItems;
 
             var width = Console.BufferWidth - 25;
 

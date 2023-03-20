@@ -132,8 +132,9 @@ namespace SngCli
                 return;
             }
 
+            ConMan.EnableProgress(1);
             var songs = FindAllSngFiles(conf.InputPath!);
-            ConMan.EnableProgress(songs.Length);
+            ConMan.ProgressItems = songs.Length;
 
 
             await Utils.ForEachAsync(songs, async (sngFile, token) =>
