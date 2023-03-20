@@ -54,7 +54,6 @@ namespace SongLib
             }
         }
 
-
         private static int CalculateFinalSize(SizeTiers sizeOption, bool upscale, int imageSize)
         {
             // rescaling forces the use of a specific resolution
@@ -114,7 +113,6 @@ namespace SongLib
                 using (var file = File.OpenRead(filePath))
                 using (var image = await Image.LoadAsync(file))
                 {
-
                     // Don't resize if it's not square
                     if (image.Height == image.Width && size != SizeTiers.None)
                     {
@@ -133,8 +131,6 @@ namespace SongLib
 
                     if (upscale || ms.Length < file.Length)
                     {
-                        Console.WriteLine($"Image Size: {image.Width}x{image.Height} Compression Ratio: {file.Length / (float)ms.Length:0.00}x");
-
                         var name = Path.GetFileNameWithoutExtension(filePath);
                         return ($"{name}.jpg", ms.ToArray());
                     }

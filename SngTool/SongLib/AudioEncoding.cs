@@ -12,8 +12,6 @@ namespace SongLib
 
         public static async Task<(string filename, byte[]? data)> ToOpus(string filePath, int bitRate)
         {
-            FileInfo fileInfo = new FileInfo(filePath);
-
             (string filename, byte[]? data) outData;
 
             // opusenc doesn't support loading mp3 or ogg vorbis
@@ -30,11 +28,7 @@ namespace SongLib
                 outData = await EncodeFileToOpus(filePath, bitRate);
             }
 
-            if (outData.data != null)
-            {
-                Console.WriteLine($"{filePath}: Opus Compression Ratio: {fileInfo.Length / (float)outData.data.Length:0.00}x");
-            }
-            else
+            if (outData.data == null)
             {
                 Console.WriteLine($"{filePath}: Opus Compression failed");
             }

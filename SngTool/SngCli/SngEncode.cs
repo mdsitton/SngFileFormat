@@ -165,6 +165,7 @@ namespace SngCli
         private static async Task EncodeSong(string songFolder)
         {
             var conf = SngEncodingConfig.Instance;
+            Console.WriteLine($"Starting: {songFolder}");
 
             SngFile sngFile = new SngFile();
             Random.Shared.NextBytes(sngFile.Seed);
@@ -173,6 +174,8 @@ namespace SngCli
 
             var fileList = Directory.GetFiles(songFolder);
 
+            long startingSize = 0;
+            long endSize = 0;
             foreach (var file in fileList)
             {
                 var fileName = Path.GetFileName(file);
@@ -190,7 +193,7 @@ namespace SngCli
                             {
                                 fileData = (fileName, await File.ReadAllBytesAsync(file));
                             }
-                            continue;
+                            break;
                         }
                     }
                 }
@@ -240,7 +243,7 @@ namespace SngCli
 
                                     fileData = (fileName, await File.ReadAllBytesAsync(file));
                                 }
-                                continue;
+                                break;
                             }
                         }
 
@@ -257,6 +260,9 @@ namespace SngCli
 
                 if (fileData.data != null)
                 {
+                    FileInfo fileInfo = new FileInfo(file);
+                    startingSize += fileInfo.Length;
+                    endSize += fileData.data.Length;
                     sngFile.AddFile(fileData.name.ToLowerInvariant(), new SngFile.FileData { Masked = true, Contents = fileData.data });
                 }
             }
@@ -271,7 +277,7 @@ namespace SngCli
 
             var saveFile = $"{Path.GetFileName(songFolder)}.sng";
             var fullPath = Path.Combine(outputFolder, saveFile);
-            Console.WriteLine($"{fullPath} Saving");
+            Console.WriteLine($"{fullPath} Saving compression ratio: {startingSize / (double)endSize:0.00}x");
             SngSerializer.SaveSngFile(sngFile, fullPath);
         }
 
