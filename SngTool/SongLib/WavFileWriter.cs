@@ -7,25 +7,30 @@ namespace SongLib
 {
     public static class WavFileWriter
     {
+        private const int HeaderSize = 44;
+
         public static byte[] Get16BitWavData(float[] audioSamples, int sampleRate, int channels)
         {
             int bitsPerSample = 16;
-            int blockAlign = channels * (bitsPerSample / 8);
-            int numSamples = audioSamples.Length;
-            int dataSize = numSamples * blockAlign;
-            int totalSize = 44 + dataSize; // 44 bytes for header + dataSize
+            int channelSize = bitsPerSample / 8;
+            int numSamples = audioSamples.Length; // This is frames * frameSize
+            int pcmDataSize = numSamples * channelSize;
+            int totalSize = HeaderSize + pcmDataSize; // 44 bytes for header + dataSize
 
             byte[] wavData = new byte[totalSize];
             Span<byte> wavDataSpan = wavData;
 
             // Create WAV header
-            CreateWavHeader(wavDataSpan, sampleRate, bitsPerSample, channels, dataSize);
+            CreateWavHeader(wavDataSpan, sampleRate, bitsPerSample, channels, pcmDataSize);
+
+            int pos = HeaderSize;
 
             // Convert float samples to 16-bit samples and write them to the wavDataSpan
             for (int i = 0; i < numSamples; i++)
             {
                 short intSample = (short)(audioSamples[i] * short.MaxValue);
-                WriteInt16(wavDataSpan, 44 + i * 2, intSample);
+                WriteInt16(wavDataSpan, pos, intSample);
+                pos += channelSize;
             }
 
             return wavData;
