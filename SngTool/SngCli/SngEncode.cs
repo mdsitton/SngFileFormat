@@ -283,6 +283,7 @@ namespace SngCli
         }
 
         private static int completedSongs;
+        private static int erroredSongs;
 
         public static async Task ProcessSongs()
         {
@@ -314,9 +315,14 @@ namespace SngCli
                     // Console.WriteLine(e);
                     // Environment.Exit(1);
                     ConMan.Out($"{songFolders} ERROR! \\n{e}");
+                    erroredSongs++;
                 }
             }, conf.NoThreads ? 1 : -1);
             ConMan.DisableProgress();
+
+            Console.WriteLine($"Packaged Songs: {completedSongs}");
+            Console.WriteLine($"Errored Songs: {erroredSongs}");
+            Console.WriteLine($"Total Songs Processed: {songFolders.Count}");
         }
     }
 }

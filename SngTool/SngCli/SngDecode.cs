@@ -119,7 +119,10 @@ namespace SngCli
             }
             ConMan.UpdateProgress(Interlocked.Increment(ref completedSongs));
         }
+
         private static int completedSongs;
+        private static int erroredSongs;
+
 
         public async static Task ProcessSongs()
         {
@@ -150,10 +153,15 @@ namespace SngCli
                     // Console.WriteLine(e);
                     // Environment.Exit(1);
                     ConMan.Out($"{sngFile} ERROR! \\n{e}");
+                    erroredSongs++;
                 }
             }, conf.NoThreads ? 1 : -1);
 
             ConMan.DisableProgress();
+
+            Console.WriteLine($"Extracted Songs: {completedSongs}");
+            Console.WriteLine($"Errored Songs: {erroredSongs}");
+            Console.WriteLine($"Total Songs Processed: {songs.Length}");
         }
 
     }
