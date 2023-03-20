@@ -178,6 +178,8 @@ namespace SngCli
             long endSize = 0;
             foreach (var file in fileList)
             {
+                FileInfo fileInfo = new FileInfo(file);
+                startingSize += fileInfo.Length;
                 var fileName = Path.GetFileName(file);
                 if (audioRegex.IsMatch(file))
                 {
@@ -260,8 +262,6 @@ namespace SngCli
 
                 if (fileData.data != null)
                 {
-                    FileInfo fileInfo = new FileInfo(file);
-                    startingSize += fileInfo.Length;
                     endSize += fileData.data.Length;
                     sngFile.AddFile(fileData.name.ToLowerInvariant(), new SngFile.FileData { Masked = true, Contents = fileData.data });
                 }
