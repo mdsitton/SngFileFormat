@@ -125,7 +125,7 @@ namespace SongLib
                 Arguments = arguments
             };
 
-            using Process process = new Process { StartInfo = info }
+            using (Process process = new Process { StartInfo = info })
             {
                 if (debug)
                 {
