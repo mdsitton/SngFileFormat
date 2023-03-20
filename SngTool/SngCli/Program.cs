@@ -174,11 +174,11 @@ namespace SngCli
             switch (command)
             {
                 case "encode":
-                    var encodeConfig = new SngEncodingConfig(cliArgs);
+                    _ = new SngEncodingConfig(cliArgs);
                     await SngEncode.ProcessSongs();
                     break;
                 case "decode":
-                    var decodeConfig = new SngDecodingOptions(cliArgs);
+                    _ = new SngDecodingOptions(cliArgs);
                     await SngDecode.ProcessSongs();
                     break;
             }
