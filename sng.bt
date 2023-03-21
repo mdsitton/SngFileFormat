@@ -15,7 +15,6 @@ struct {
     struct {
         int32 filenameLen;
         char filename[filenameLen];
-        ubyte masked;
         uint64 contentsLen;
         uint64 contentsIndex;
     } fileMeta[F]<optimize=false>;
