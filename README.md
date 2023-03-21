@@ -60,7 +60,6 @@
 ## Design Decisions
 - The metadata is arbitrary and not tied to any specific application. There can be any number of properties. Application-specific properties can be added. However, to avoid unintentional property conflicts between the data of different applications, the convention is for each application to encode all its metadata into a single key-value pair, where the key is the application name.
 - `.sng` is designed to be able to contain the binary contents of any set of files.
-- If no masking is used, the raw binary of each file appears at its listed index, allowing for programs to efficiently access only certain files.
 - File binaries are placed at the end of the format to allow programs to efficiently scan only the `.sng`'s `metadata` or `fileMeta` sections.
-- Files can be masked. The default will simply obfuscate the file's binary so that it can't be directly detected by programs that don't know how to parse the file.
+- The file binary is masked so that it can't be directly detected by programs that don't know how to parse the file.
 - This format is exclusively in a LittleEndian byte ordering for effecieny on modern cpu architectures.
