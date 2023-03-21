@@ -115,7 +115,7 @@ namespace SngCli
             // iterate through files and save them to disk
             foreach ((var name, var data) in sngFile.Files)
             {
-                await File.WriteAllBytesAsync(Path.Combine(outputFolder, name), data.Contents!);
+                await File.WriteAllBytesAsync(Path.Combine(outputFolder, name), data!);
             }
             ConMan.UpdateProgress(Interlocked.Increment(ref completedSongs));
         }

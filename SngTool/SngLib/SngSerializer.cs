@@ -35,7 +35,7 @@ namespace SngLib
                 Version = br.ReadUInt64(),
                 Seed = br.ReadBytes(16),
                 Metadata = new ConcurrentDictionary<string, string>(),
-                Files = new ConcurrentDictionary<string, SngFile.FileData>()
+                Files = new ConcurrentDictionary<string, byte[]?>()
             };
 
             if (sngFile.Version != SngFile.CurrentVersion)
@@ -70,11 +70,6 @@ namespace SngLib
                     throw new FormatException("File name length value cannot be negative");
                 }
                 string fileName = Encoding.UTF8.GetString(br.ReadBytes(fileNameLength));
-                var fileData = new SngFile.FileData()
-                {
-                    Masked = br.ReadByte() != 0,
-                    Contents = null
-                };
                 ulong contentsLen = br.ReadUInt64();
                 ulong contentsIndex = br.ReadUInt64();
                 long currentPos = br.BaseStream.Position;
@@ -85,22 +80,21 @@ namespace SngLib
 
                 // Unmask data
                 MaskData(contents, sngFile.Seed);
-                fileData.Contents = contents;
 
                 br.BaseStream.Position = currentPos;
 
-                sngFile.AddFile(fileName, fileData);
+                sngFile.AddFile(fileName, contents);
             }
 
             return sngFile;
         }
 
-        private static ulong CountNonNullFiles(IEnumerable<SngFile.FileData> data)
+        private static ulong CountNonNullFiles(IEnumerable<byte[]?> data)
         {
             ulong count = 0;
             foreach (var item in data)
             {
-                if (item.Contents != null)
+                if (item != null)
                 {
                     count++;
                 }
@@ -140,7 +134,7 @@ namespace SngLib
             contentPosition += sizeof(ulong); // File count
             foreach (var fileEntry in sngFile.Files)
             {
-                if (fileEntry.Value.Contents == null)
+                if (fileEntry.Value == null)
                     continue;
 
                 contentPosition += sizeof(int) + Encoding.UTF8.GetByteCount(fileEntry.Key); // FileName length and FileName
@@ -151,23 +145,23 @@ namespace SngLib
             bw.Write(CountNonNullFiles(sngFile.Files.Values));
             foreach (var fileEntry in sngFile.Files)
             {
-                if (fileEntry.Value.Contents == null)
+                if (fileEntry.Value == null)
                     continue;
 
                 byte[] fileNameBytes = Encoding.UTF8.GetBytes(fileEntry.Key);
                 bw.Write(fileNameBytes.Length);
                 bw.Write(fileNameBytes);
-                bw.Write((ulong)fileEntry.Value.Contents.Length);
+                bw.Write((ulong)fileEntry.Value.Length);
                 bw.Write((ulong)contentPosition);
-                contentPosition += fileEntry.Value.Contents.Length;
+                contentPosition += fileEntry.Value.Length;
             }
 
             // Write file contents
             foreach (var fileEntry in sngFile.Files)
             {
-                if (fileEntry.Value.Contents == null)
+                if (fileEntry.Value == null)
                     continue;
-                byte[] contents = fileEntry.Value.Contents;
+                byte[] contents = fileEntry.Value;
 
                 // Copy original data for masking
                 var contentsCopy = new byte[contents.Length];

@@ -9,15 +9,10 @@ namespace SngLib
         public byte[] Seed = new byte[16];
 
         public ConcurrentDictionary<string, string> Metadata = new();
-        public ConcurrentDictionary<string, FileData> Files = new();
+        public ConcurrentDictionary<string, byte[]?> Files = new();
 
-        public class FileData
-        {
-            public bool Masked;
-            public byte[]? Contents;
-        }
 
-        public void AddFile(string fileName, FileData data)
+        public void AddFile(string fileName, byte[]? data)
         {
             Files.AddOrUpdate(fileName, data, (_, _) => data);
         }

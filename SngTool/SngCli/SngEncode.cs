@@ -263,7 +263,7 @@ namespace SngCli
                 if (fileData.data != null)
                 {
                     endSize += fileData.data.Length;
-                    sngFile.AddFile(fileData.name.ToLowerInvariant(), new SngFile.FileData { Masked = true, Contents = fileData.data });
+                    sngFile.AddFile(fileData.name.ToLowerInvariant(), fileData.data);
                 }
             }
             var folder = Path.GetDirectoryName(songFolder)!;
