@@ -46,8 +46,16 @@ namespace SngLib
             for (ulong i = 0; i < metadataCount; i++)
             {
                 int keyLen = br.ReadInt32();
+                if (keyLen < 0)
+                {
+                    throw new FormatException("Metadata Key length value cannot be negative");
+                }
                 string key = Encoding.UTF8.GetString(br.ReadBytes(keyLen));
                 int valueLen = br.ReadInt32();
+                if (valueLen < 0)
+                {
+                    throw new FormatException("Metadata value length value cannot be negative");
+                }
                 string value = Encoding.UTF8.GetString(br.ReadBytes(valueLen));
                 sngFile.SetString(key, value);
             }
@@ -56,7 +64,12 @@ namespace SngLib
             ulong fileCount = br.ReadUInt64();
             for (ulong i = 0; i < fileCount; i++)
             {
-                string fileName = Encoding.UTF8.GetString(br.ReadBytes(br.ReadInt32()));
+                var fileNameLength = br.ReadInt32();
+                if (fileNameLength < 0)
+                {
+                    throw new FormatException("File name length value cannot be negative");
+                }
+                string fileName = Encoding.UTF8.GetString(br.ReadBytes(fileNameLength));
                 var fileData = new SngFile.FileData()
                 {
                     Masked = br.ReadByte() != 0,
