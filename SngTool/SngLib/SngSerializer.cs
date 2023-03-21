@@ -69,11 +69,11 @@ namespace SngLib
                 // Read file contents
                 br.BaseStream.Seek((long)contentsIndex, SeekOrigin.Begin);
                 byte[] contents = br.ReadBytes((int)contentsLen);
-                if (fileData.Masked)
-                {
-                    MaskData(contents, sngFile.Seed);
-                }
+
+                // Unmask data
+                MaskData(contents, sngFile.Seed);
                 fileData.Contents = contents;
+
                 br.BaseStream.Position = currentPos;
 
                 sngFile.AddFile(fileName, fileData);
@@ -131,7 +131,6 @@ namespace SngLib
                     continue;
 
                 contentPosition += sizeof(int) + Encoding.UTF8.GetByteCount(fileEntry.Key); // FileName length and FileName
-                contentPosition += sizeof(byte); // Masked
                 contentPosition += sizeof(ulong) * 2; // Contents length and Contents index
             }
 
@@ -145,8 +144,6 @@ namespace SngLib
                 byte[] fileNameBytes = Encoding.UTF8.GetBytes(fileEntry.Key);
                 bw.Write(fileNameBytes.Length);
                 bw.Write(fileNameBytes);
-
-                bw.Write(fileEntry.Value.Masked ? (byte)1 : (byte)0);
                 bw.Write((ulong)fileEntry.Value.Contents.Length);
                 bw.Write((ulong)contentPosition);
                 contentPosition += fileEntry.Value.Contents.Length;
@@ -158,13 +155,14 @@ namespace SngLib
                 if (fileEntry.Value.Contents == null)
                     continue;
                 byte[] contents = fileEntry.Value.Contents;
-                if (fileEntry.Value.Masked)
-                {
-                    var contentsCopy = new byte[contents.Length];
-                    Array.Copy(contents, contentsCopy, contents.Length);
-                    MaskData(contentsCopy, sngFile.Seed);
-                    contents = contentsCopy;
-                }
+
+                // Copy original data for masking
+                var contentsCopy = new byte[contents.Length];
+                Array.Copy(contents, contentsCopy, contents.Length);
+
+                MaskData(contentsCopy, sngFile.Seed);
+                contents = contentsCopy;
+
                 bw.Write(contents);
             }
             File.WriteAllBytes(path, ms.ToArray());
