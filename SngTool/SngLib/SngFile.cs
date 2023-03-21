@@ -17,9 +17,18 @@ namespace SngLib
             Files.AddOrUpdate(fileName, data, (_, _) => data);
         }
 
-        public bool TryGetString(string key, out string? value)
+        public bool TryGetString(string key, out string value)
         {
-            return Metadata.TryGetValue(key, out value);
+            if (Metadata.TryGetValue(key, out var strVal))
+            {
+                value = strVal!;
+                return true;
+            }
+            else
+            {
+                value = string.Empty;
+                return false;
+            }
         }
 
         public bool TryGetInt(string key, out int value)

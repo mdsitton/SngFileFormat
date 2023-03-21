@@ -41,6 +41,7 @@ namespace SngCli
 
         private static bool ParseMetadata(SngFile sngFile, string iniPath)
         {
+            // Manually parse the types of known keys so that we know they are correct
             IniFile iniFile = new IniFile();
             iniFile.Load(iniPath);
             if (iniFile.IsSection("song"))
@@ -86,6 +87,7 @@ namespace SngCli
                 var offset = iniFile.GetInt("song", "delay", 0);
                 var videoStart = iniFile.GetInt("song", "video_start_time", 0);
                 var endEventsEnabled = iniFile.GetBool("song", "end_events", true);
+                var loadingPhrase = iniFile.GetString("song", "loading_phrase", "");
 
                 // Save metadata to sng file
                 sngFile.SetString("name", name);
@@ -122,8 +124,49 @@ namespace SngCli
                 sngFile.SetInt("delay", offset);
                 sngFile.SetInt("video_start_time", videoStart);
                 sngFile.SetBool("end_events", endEventsEnabled);
+                sngFile.SetString("loading_phrase", loadingPhrase);
 
-                // TODO - should we automatically parse any ch unrecognized tags and pass them in as-is?
+                foreach (var keyName in iniFile.GetKeyNames("song"))
+                {
+                    if (KnownKeys.IsKnownKey(keyName))
+                    {
+                        continue;
+                    }
+
+                    if (iniFile.TryGetBool("song", keyName, out var boolVal))
+                    {
+                        if (Program.Verbose)
+                        {
+                            ConMan.Out($"Unknown Key: {keyName} Value: {boolVal} BOOL");
+                        }
+                        sngFile.SetBool(keyName, boolVal);
+                    }
+                    else if (iniFile.TryGetInt("song", keyName, out var intVal))
+                    {
+                        if (Program.Verbose)
+                        {
+                            ConMan.Out($"Unknown Key: {keyName} Value: {intVal} INT");
+                        }
+                        sngFile.SetInt(keyName, intVal);
+                    }
+                    else if (iniFile.TryGetInt("song", keyName, out var floatVal))
+                    {
+                        if (Program.Verbose)
+                        {
+                            ConMan.Out($"Unknown Key: {keyName} Value: {floatVal} FLOAT");
+                        }
+                        sngFile.SetFloat(keyName, floatVal);
+                    }
+                    else if (iniFile.TryGetString("song", keyName, out var stringVal))
+                    {
+                        if (Program.Verbose)
+                        {
+                            ConMan.Out($"Unknown Key: {keyName} Value: {stringVal} STRING");
+                        }
+                        sngFile.SetString(keyName, stringVal);
+                    }
+                }
+
                 return true;
             }
             else

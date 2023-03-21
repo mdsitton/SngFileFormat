@@ -105,15 +105,17 @@ namespace SongLib
             }
         }
 
+        private IReadOnlyDictionary<string, string> emptyDict = new Dictionary<string, string>();
+
         // handle making section names case-insensitive as some charts use cased section names
-        public bool TryGetSection(string sectionName, out Dictionary<string, string>? section)
+        public bool TryGetSection(string sectionName, out IReadOnlyDictionary<string, string> section)
         {
+            section = emptyDict;
             if (!sections.TryGetValue(sectionName, out var value))
             {
 
                 if (!sections.TryGetValue(sectionName.ToLowerInvariant(), out value))
                 {
-                    section = null;
                     return false;
                 }
                 else
@@ -126,6 +128,23 @@ namespace SongLib
             {
                 section = value;
                 return true;
+            }
+        }
+
+        public IEnumerable<string> GetSectionNames()
+        {
+            return sections.Keys;
+        }
+
+        public IEnumerable<string> GetKeyNames(string sectionName)
+        {
+            if (TryGetSection(sectionName, out var section))
+            {
+                return section!.Keys;
+            }
+            else
+            {
+                return Enumerable.Empty<string>();
             }
         }
 
@@ -150,52 +169,88 @@ namespace SongLib
 
         public bool IsKey(string sectionName, string keyName)
         {
-            return TryGetSection(sectionName, out var section) && section!.ContainsKey(keyName);
+            return TryGetSection(sectionName, out var section) && section.ContainsKey(keyName);
+        }
+
+        public bool TryGetString(string section, string key, out string value)
+        {
+            bool rtn;
+            string? str = null;
+            if (rtn = TryGetSection(section, out var sectionValue) && sectionValue.TryGetValue(key, out str))
+            {
+                value = str!;
+            }
+            else
+            {
+                value = string.Empty;
+            }
+            return rtn;
+        }
+
+        public bool TryGetBool(string section, string key, out bool value)
+        {
+            value = default;
+            return TryGetString(section, key, out var strVal) && bool.TryParse(strVal, out value);
+        }
+
+        public bool TryGetInt(string section, string key, out int value)
+        {
+            value = default;
+            return TryGetString(section, key, out var strVal) && int.TryParse(strVal, out value);
+        }
+
+        public bool TryGetFloat(string section, string key, out float value)
+        {
+            value = default;
+            return TryGetString(section, key, out var strVal) && float.TryParse(strVal, out value);
         }
 
         public string GetString(string section, string key, string defaultValue = "")
         {
-            if (!TryGetSection(section, out var sectionValue) || !sectionValue!.TryGetValue(key, out var value))
+            if (TryGetString(section, key, out string val))
+            {
+                return val;
+            }
+            else
             {
                 return defaultValue;
             }
-            return value;
         }
 
         public int GetInt(string section, string key, int defaultValue = 0)
         {
-            var stringValue = this.GetString(section, key);
-
-            if (int.TryParse(stringValue, out var value))
+            if (TryGetInt(section, key, out var val))
             {
-                return value;
+                return val;
             }
-
-            return defaultValue;
+            else
+            {
+                return defaultValue;
+            }
         }
 
         public float GetFloat(string section, string key, float defaultValue = 0f)
         {
-            var stringValue = this.GetString(section, key);
-
-            if (float.TryParse(stringValue, out var value))
+            if (TryGetFloat(section, key, out var val))
             {
-                return value;
+                return val;
             }
-
-            return defaultValue;
+            else
+            {
+                return defaultValue;
+            }
         }
 
         public bool GetBool(string section, string key, bool defaultValue = false)
         {
-            var stringValue = this.GetString(section, key);
-
-            if (bool.TryParse(stringValue, out var value))
+            if (TryGetBool(section, key, out var val))
             {
-                return value;
+                return val;
             }
-
-            return defaultValue;
+            else
+            {
+                return defaultValue;
+            }
         }
 
         public void SetString(string section, string key, string value)
