@@ -1,8 +1,11 @@
 using System;
+using System.Buffers;
 using System.Diagnostics;
+using System.IO.MemoryMappedFiles;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using NVorbis;
+using NLayer;
 
 namespace SongLib
 {
@@ -35,7 +38,11 @@ namespace SongLib
             return outData;
         }
 
-        private static async Task<(string filename, byte[]? data)> DecodeVorbisToWav(string filePath)
+
+        /// <summary>
+        /// Decode mp3 file and convert into a wav file
+        /// </summary>
+        private static async Task<(string filename, byte[]? data)> EncodeVorbisToOpus(string filePath, int bitRate)
         {
             using (var ms = new MemoryStream())
             {
@@ -47,35 +54,29 @@ namespace SongLib
 
                 using (var vorbis = new VorbisReader(ms))
                 {
-                    float[] samples = new float[vorbis.TotalSamples];
+                    long totalSamples = vorbis.TotalSamples * vorbis.Channels;
+                    long fileSize = PcmFileWriter.CalculateSizeEstimate(totalSamples);
 
-                    vorbis.ReadSamples(samples, 0, samples.Length);
+                    using (var mmf = MemoryMappedFile.CreateNew(null, fileSize))
+                    using (var writer = new PcmFileWriter(mmf, (ushort)vorbis.SampleRate, (ushort)vorbis.Channels, totalSamples))
+                    {
+                        float[] samples = ArrayPool<float>.Shared.Rent(262144); // 256K floats = 1MiB 
+                        var sampleLength = samples.Length;
+                        long totalCount = 0;
+                        while (!writer.Completed)
+                        {
+                            var remaining = totalSamples - totalCount;
+                            var count = vorbis.ReadSamples(samples, 0, (int)Math.Min(remaining, sampleLength));
+                            totalCount += count;
+                            writer.IngestSamples(samples.AsSpan(0, count));
+                        }
+                        ArrayPool<float>.Shared.Return(samples);
 
-                    var data = WavFileWriter.Get16BitWavData(samples, vorbis.SampleRate, vorbis.Channels);
-
-                    // Console.WriteLine($"{filePath}: Vorbis expansion Ratio: {(float)data.Length / ms.Length:0.00}x larger");
-                    var name = Path.GetFileNameWithoutExtension(filePath);
-                    return ($"{name}.wav", data);
+                        var name = Path.GetFileName(filePath);
+                        return (Path.ChangeExtension(name, ".opus"), await EncodePcmToOpus(writer, bitRate));
+                    }
                 }
             }
-        }
-
-        private async static Task<(string filename, byte[]? data)> EncodeVorbisToOpus(string filePath, int bitRate)
-        {
-            var data = await DecodeVorbisToWav(filePath);
-            if (data.data == null)
-                return data;
-            // TODO = fix the file names to use opus extension on output
-            return await EncodeFileToOpus(filePath, data.data, bitRate);
-        }
-
-        private async static Task<(string filename, byte[]? data)> EncodeMp3ToOpus(string filePath, int bitRate)
-        {
-            var data = await DecodeMp3ToWav(filePath);
-            if (data.data == null)
-                return data;
-            // TODO = fix the file names to use opus extension on output
-            return await EncodeFileToOpus(filePath, data.data, bitRate);
         }
 
         private static string GetExecutable(string name)
@@ -88,31 +89,46 @@ namespace SongLib
         }
 
         /// <summary>
-        /// Encode opus file from byte array, this implementation is a bit less reliable and uses more cpu
+        /// Decode mp3 file and convert into a wav file
         /// </summary>
-        private async static Task<(string filename, byte[]? data)> DecodeMp3ToWav(string filePath)
+        private static async Task<(string filename, byte[]? data)> EncodeMp3ToOpus(string filePath, int bitRate)
         {
-
-            using (var file = File.OpenRead(filePath))
+            using (var ms = new MemoryStream())
             {
-                var args = $"--decode \"{filePath}\" - ";
-                var encodeData = await RunAudioProcess("lame", args, null, verbose);
-
-                var fileName = Path.GetFileName(filePath);
-
-                if (encodeData == null)
+                // Read file from disk async since VorbisReader isn't
+                using (var file = File.OpenRead(filePath))
                 {
-                    Console.WriteLine($"{filePath} encode failed");
-                    return (fileName, null);
+                    await file.CopyToAsync(ms);
                 }
 
-                var name = Path.GetFileNameWithoutExtension(filePath);
-                return ($"{name}.wav", encodeData);
-            }
+                using (var mp3 = new MpegFile(ms))
+                {
+                    var totalSamples = mp3.Length;
+                    var fileSize = PcmFileWriter.CalculateSizeEstimate(totalSamples);
 
+                    using (var mmf = MemoryMappedFile.CreateNew(null, fileSize))
+                    using (var writer = new PcmFileWriter(mmf, (ushort)mp3.SampleRate, (ushort)mp3.Channels, totalSamples))
+                    {
+                        float[] samples = ArrayPool<float>.Shared.Rent(262144); // 256K floats = 1MiB 
+                        var sampleLength = samples.Length;
+                        long totalCount = 0;
+                        while (!writer.Completed)
+                        {
+                            var remaining = totalSamples - totalCount;
+                            var count = mp3.ReadSamples(samples, 0, (int)Math.Min(remaining, sampleLength));
+                            totalCount += count;
+                            writer.IngestSamples(samples.AsSpan(0, count));
+                        }
+                        ArrayPool<float>.Shared.Return(samples);
+
+                        var name = Path.GetFileName(filePath);
+                        return (Path.ChangeExtension(name, ".opus"), await EncodePcmToOpus(writer, bitRate));
+                    }
+                }
+            }
         }
 
-        private async static Task<byte[]?> RunAudioProcess(string processName, string arguments, byte[]? inputBytes = null, bool debug = false)
+        private async static Task<byte[]?> RunAudioProcess(string processName, string arguments, MemoryMappedFile? file = null, bool debug = false)
         {
             ProcessStartInfo info = new ProcessStartInfo
             {
@@ -144,18 +160,17 @@ namespace SongLib
 
                     Task? writeTask = null;
 
-                    if (inputBytes != null)
+                    if (file != null)
                     {
                         // Write inputBytes to the process's StandardInput asynchronously
                         writeTask = Task.Run(async () =>
                         {
                             try
                             {
-                                using (Stream stdin = process.StandardInput.BaseStream)
-                                {
-                                    await stdin.WriteAsync(inputBytes, 0, inputBytes.Length);
-                                    await stdin.FlushAsync();
-                                }
+                                using Stream memFile = file.CreateViewStream();
+                                using Stream stdin = process.StandardInput.BaseStream;
+
+                                await memFile.CopyToAsync(stdin);
                             }
                             catch (Exception e)
                             {
@@ -217,9 +232,18 @@ namespace SongLib
         }
 
         /// <summary>
+        /// Encode opus file from <see cref="PcmFileWriter">
+        /// </summary>
+        private async static Task<byte[]?> EncodePcmToOpus(PcmFileWriter file, int bitRate)
+        {
+            var args = $"--vbr --framesize 60 --bitrate {bitRate} --discard-pictures --discard-comments --raw --raw-bits {PcmFileWriter.BitsPerSample} --raw-rate {file.SampleRate} --raw-chan {file.Channels} - -";
+            return await RunAudioProcess("opusenc", args, file.mappedFile, verbose);
+        }
+
+        /// <summary>
         /// Encode opus file from byte array
         /// </summary>
-        private async static Task<(string filename, byte[]? data)> EncodeFileToOpus(string filePath, byte[] inputData, int bitRate)
+        private async static Task<(string filename, byte[]? data)> EncodeFileToOpus(string filePath, MemoryMappedFile inputData, int bitRate)
         {
             var args = $"--vbr --framesize 60 --bitrate {bitRate} --discard-pictures --discard-comments - -";
             var encodeData = await RunAudioProcess("opusenc", args, inputData, verbose);
@@ -242,8 +266,10 @@ namespace SongLib
         /// </summary>
         private async static Task<(string filename, byte[]? data)> EncodeFileToOpus(string filePath, int bitRate)
         {
-            var data = await File.ReadAllBytesAsync(filePath);
-            return await EncodeFileToOpus(filePath, data, bitRate);
+            using (var mmf = MemoryMappedFile.CreateFromFile(filePath))
+            {
+                return await EncodeFileToOpus(filePath, mmf, bitRate);
+            }
         }
     }
 }

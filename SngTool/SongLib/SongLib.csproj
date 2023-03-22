@@ -3,6 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Nullable>enable</Nullable>
     
     <IsWindows Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))' == 'true'">true</IsWindows> 
@@ -11,13 +12,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="NLayer" Version="1.14.0" />
     <PackageReference Include="NVorbis" Version="0.10.5" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.0.0" />
   </ItemGroup>
 
   <ItemGroup Condition="$(IsWindows) == 'True'">
     <Content CopyToOutputDirectory="PreserveNewest" Include=".\deps\opusenc.exe" Link="opusenc.exe" />
-    <Content CopyToOutputDirectory="PreserveNewest" Include=".\deps\lame.exe" Link="lame.exe" />
   </ItemGroup>
 
 </Project>
