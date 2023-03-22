@@ -197,7 +197,7 @@ namespace SngCli
                     // Console.WriteLine(sngFile);
                     // Console.WriteLine(e);
                     // Environment.Exit(1);
-                    ConMan.Out($"{sngFile} ERROR! \\n{e}");
+                    ConMan.Out($"{sngFile} ERROR! \n{e}");
                     erroredSongs++;
                 }
             }, conf.NoThreads ? 1 : -1);

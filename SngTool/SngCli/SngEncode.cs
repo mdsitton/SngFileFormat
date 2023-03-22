@@ -208,7 +208,29 @@ namespace SngCli
         private static async Task EncodeSong(string songFolder)
         {
             var conf = SngEncodingConfig.Instance;
-            ConMan.Out($"Starting: {songFolder}");
+
+            var folder = Path.GetDirectoryName(songFolder)!;
+            var relative = Path.GetRelativePath(conf.InputPath!, folder);
+            var outputFolder = Path.Combine(Path.GetFullPath(conf.OutputPath!), relative);
+
+            if (!Directory.Exists(outputFolder))
+            {
+                Directory.CreateDirectory(outputFolder);
+            }
+
+            var saveFile = $"{Path.GetFileName(songFolder)}.sng";
+            var fullPath = Path.Combine(outputFolder, saveFile);
+
+            if (conf.SkipExisting && File.Exists(fullPath))
+            {
+                ConMan.Out($"{fullPath} already exists skipping!");
+                skippedSongs++;
+                return;
+            }
+            else
+            {
+                ConMan.Out($"Starting: {songFolder}");
+            }
 
             SngFile sngFile = new SngFile();
             Random.Shared.NextBytes(sngFile.Seed);
@@ -309,24 +331,27 @@ namespace SngCli
                     sngFile.AddFile(fileData.name.ToLowerInvariant(), fileData.data);
                 }
             }
-            var folder = Path.GetDirectoryName(songFolder)!;
-            var relative = Path.GetRelativePath(conf.InputPath!, folder);
-            var outputFolder = Path.Combine(Path.GetFullPath(conf.OutputPath!), relative);
-
-            if (!Directory.Exists(outputFolder))
-            {
-                Directory.CreateDirectory(outputFolder);
-            }
-
-            var saveFile = $"{Path.GetFileName(songFolder)}.sng";
-            var fullPath = Path.Combine(outputFolder, saveFile);
             ConMan.Out($"{fullPath} Saving compression ratio: {startingSize / (double)endSize:0.00}x");
             SngSerializer.SaveSngFile(sngFile, fullPath);
-            ConMan.UpdateProgress(Interlocked.Increment(ref completedSongs));
+            Interlocked.Increment(ref completedSongs);
         }
 
         private static int completedSongs;
         private static int erroredSongs;
+        private static int skippedSongs;
+        private static int processedSongs;
+
+        public static void OutputReport()
+        {
+            var conf = SngEncodingConfig.Instance;
+            Console.WriteLine($"Packaged Songs: {completedSongs}");
+            Console.WriteLine($"Errored Songs: {erroredSongs}");
+            if (conf.SkipExisting)
+            {
+                Console.WriteLine($"Skipped Songs: {skippedSongs}");
+            }
+            Console.WriteLine($"Total Songs Processed: {processedSongs}");
+        }
 
         public static async Task ProcessSongs()
         {
@@ -340,6 +365,7 @@ namespace SngCli
             }
 
             ConMan.Out("SngCli scanning song folders");
+            // ConMan.ProgramCanceledAction += OutputReport;
 
             ConMan.EnableProgress(1);
             List<string> songFolders = SearchForFolders(conf.InputPath!);
@@ -353,19 +379,13 @@ namespace SngCli
                 }
                 catch (Exception e)
                 {
-                    // Con.DisableProgress();
-                    // Console.WriteLine(sngFile);
-                    // Console.WriteLine(e);
-                    // Environment.Exit(1);
-                    ConMan.Out($"{songFolders} ERROR! \\n{e}");
-                    erroredSongs++;
+                    ConMan.Out($"{songFolder} ERROR! \n{e}");
+                    Interlocked.Increment(ref erroredSongs);
                 }
+                ConMan.UpdateProgress(Interlocked.Increment(ref processedSongs));
             }, conf.NoThreads ? 1 : -1);
             ConMan.DisableProgress();
-
-            Console.WriteLine($"Packaged Songs: {completedSongs}");
-            Console.WriteLine($"Errored Songs: {erroredSongs}");
-            Console.WriteLine($"Total Songs Processed: {songFolders.Count}");
+            OutputReport();
         }
     }
 }
