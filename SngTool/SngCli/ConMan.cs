@@ -77,24 +77,52 @@ namespace SngCli
             lock (consoleLock)
             {
                 var width = Console.BufferWidth;
-                int linePadding;
+                var firstNewLine = message.IndexOf('\n');
+
                 // Deal with line wrapping
-                if (message.Length > width)
+                if (firstNewLine != -1 || message.Length > width)
                 {
-                    int lineCount = (int)Math.Ceiling((float)message.Length / width);
-                    Console.Write(new string('\n', lineCount));
+                    // always handle first line with all spaces
+                    string prepOutput = new string(' ', width);
+
+                    int lineCount = 0;
+                    int messagePos = firstNewLine < width ? firstNewLine + 1 : 0;
+
+                    while (messagePos < message.Length)
+                    {
+                        var nextNewLine = message.IndexOf('\n', messagePos);
+
+                        // no more new lines to deal with calculate the remaining lines
+                        if (nextNewLine == -1)
+                        {
+                            lineCount += (int)Math.Ceiling((float)(message.Length - messagePos) / width);
+                            prepOutput += new string('\n', lineCount);
+                            messagePos = message.Length;
+                            break;
+                        }
+                        else
+                        {
+                            lineCount++;
+                            messagePos = nextNewLine + 1;
+                        }
+                    }
+                    Console.Write(prepOutput);
                     Console.CursorTop -= lineCount;
-                    // Line padding is only used for the first line and since we know
-                    // that we are going to always fill it up it's not needed here.
-                    linePadding = 0;
                 }
                 else
                 {
+                    // Simple case where there are no new lines, and the message
+                    // is shorter than the width of the console
                     Console.WriteLine();
                     Console.CursorTop -= 1;
-                    linePadding = width - message.Length;
+                    var linePadding = width - message.Length;
+                    if (linePadding > 0)
+                    {
+                        message += new string(' ', linePadding);
+                    }
                 }
-                Console.WriteLine(message + new string(' ', linePadding));
+
+                Console.WriteLine(message);
                 DrawProgressBar();
             }
         }
