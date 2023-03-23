@@ -72,12 +72,18 @@ namespace SongLib
             int sampleCount = audioSamples.Length;
             int pcmDataSize = sampleCount * ChannelSize;
 
-            // Writing position based on written samples so far 
-            if (writePos + pcmDataSize > TotalSize)
+            var endPos = writePos + pcmDataSize;
+
+            // If end pos too long clamp to max size
+            if (endPos > TotalSize)
             {
-                throw new Exception($"ERROR: Write position too far!");
+
+                pcmDataSize = (int)(TotalSize - writePos) & ~1;
+                sampleCount = pcmDataSize / ChannelSize;
+                audioSamples = audioSamples.Slice(0, sampleCount);
+                Console.WriteLine("Too long, clamping to max");
             }
-            Span<byte> wavDataSpan = new Span<byte>(ptrWrite + writePos, pcmDataSize); ;
+            Span<byte> wavDataSpan = new Span<byte>(ptrWrite + writePos, pcmDataSize);
 
             int pos = 0;
             for (int i = 0; i < sampleCount; i++)
