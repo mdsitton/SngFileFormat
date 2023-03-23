@@ -56,7 +56,8 @@ namespace SongLib
                 using (var mmf = MemoryMappedFile.CreateNew(null, fileSize))
                 using (var writer = new PcmFileWriter(mmf, (ushort)vorbis.SampleRate, (ushort)vorbis.Channels, totalSamples))
                 {
-                    float[] samples = ArrayPool<float>.Shared.Rent(262144); // 256K floats = 1MiB 
+                    int chunkSize = (int)Math.Min(totalSamples, writer.MaxChunkSamples);
+                    float[] samples = new float[chunkSize];
                     var sampleLength = samples.Length;
                     while (true)
                     {
@@ -68,7 +69,6 @@ namespace SongLib
                         }
                         writer.IngestSamples(samples.AsSpan(0, count));
                     }
-                    ArrayPool<float>.Shared.Return(samples);
 
                     var name = Path.GetFileName(filePath);
                     return (Path.ChangeExtension(name, ".opus"), await EncodePcmToOpus(writer, bitRate));
@@ -101,7 +101,8 @@ namespace SongLib
                 using (var mmf = MemoryMappedFile.CreateNew(null, fileSize))
                 using (var writer = new PcmFileWriter(mmf, (ushort)mp3.SampleRate, (ushort)mp3.Channels, totalSamples))
                 {
-                    float[] samples = ArrayPool<float>.Shared.Rent(262144); // 256K floats = 1MiB 
+                    int chunkSize = (int)Math.Min(totalSamples, writer.MaxChunkSamples);
+                    float[] samples = new float[chunkSize];
                     var sampleLength = samples.Length;
                     while (true)
                     {
@@ -113,7 +114,6 @@ namespace SongLib
                         }
                         writer.IngestSamples(samples.AsSpan(0, count));
                     }
-                    ArrayPool<float>.Shared.Return(samples);
                     var name = Path.GetFileName(filePath);
                     return (Path.ChangeExtension(name, ".opus"), await EncodePcmToOpus(writer, bitRate));
                 }

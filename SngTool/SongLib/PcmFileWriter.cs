@@ -89,17 +89,11 @@ namespace SongLib
             for (int i = 0; i < sampleCount; i++)
             {
                 short intSample = (short)Math.Round(audioSamples[i] * short.MaxValue);
-                WriteInt16(wavDataSpan, intSample, ref pos);
+                BinaryPrimitives.WriteInt16LittleEndian(wavDataSpan.Slice(pos, 2), intSample);
+                pos += 2;
             }
             writePos += pos;
             SamplesWritten += (uint)sampleCount;
-        }
-
-        private void WriteInt16(Span<byte> buffer, short value, ref int offset)
-        {
-            var size = Unsafe.SizeOf<short>();
-            BinaryPrimitives.WriteInt16LittleEndian(buffer.Slice(offset, size), value);
-            offset += size;
         }
     }
 }
