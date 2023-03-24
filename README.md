@@ -58,23 +58,23 @@ These is the required ordering of each of these components:
 | ----------------- | -------------- | --------------- | ----------------------------------------------- |
 | metadataLen       | uint64         | 8               | Number of bytes in the section after this field |
 | metadataCount     | uint64         | 8               | Number of metadata sections                     |
-| metadataPairArray | metadataPair[] | metadataLen - 8 | Array of metadataPair sections                  |
+| metadataPairArray | MetadataPair[] | metadataLen - 8 | Array of metadataPair sections                  |
 
-### `[fileIndex]`
+### `FileIndex`
 | Field         | Data Type  | Size            | Description                                     |
 | ------------- | ---------- | --------------- | ----------------------------------------------- |
 | fileMetaLen   | uint64     | 4               | Number of bytes in the section after this field |
 | fileCount     | uint64     | 4               | Number of file and fileMeta sections            |
-| fileMetaArray | fileMeta[] | fileMetaLen - 4 | Array of fileMeta sections                      |
+| fileMetaArray | FileMeta[] | fileMetaLen - 4 | Array of fileMeta sections                      |
 
-### [fileData]
+### FileData
 | Field         | Data Type | Size        | Description                            |
 | ------------- | --------- | ----------- | -------------------------------------- |
 | fileDataLen   | uint64    | 8           | Total length in bytes of all file data |
-| fileDataArray | file[]    | fileDataLen | Concatenated file sections             |
+| fileDataArray | File[]    | fileDataLen | Concatenated file sections             |
 
 
-### `[metadataPair]` (represents a single metadata string key/value pair)
+### `MetadataPair` (represents a single metadata string key/value pair)
 | Field    | Data Type | Size     | Description                              |
 | -------- | --------- | -------- | ---------------------------------------- |
 | keyLen   | int32     | 4        | The number of bytes in the key           |
@@ -83,7 +83,7 @@ These is the required ordering of each of these components:
 | value    | string    | valueLen | The metadata's value                     |
 
 
-### `[fileMeta]` (contains the file index metadata for each `[file]` section)
+### `FileMeta` (contains the file index metadata for each `[file]` section)
 | Field         | Data Type | Size        | Description                                                                       |
 | ------------- | --------- | ----------- | --------------------------------------------------------------------------------- |
 | filenameLen   | byte      | 1           | The number of bytes in the filename                                               |
@@ -92,7 +92,7 @@ These is the required ordering of each of these components:
 | contentsIndex | uint64    | 8           | The first byte index from the start of the file of the corresponding file section |
 
 
-### `[file]` (contains the binary contents of a single file)
+### `File` (contains the binary contents of a single file)
 | Field           | Data Type    | Size        | Description                       |
 | --------------- | ------------ | ----------- | --------------------------------- |
 | maskedFileBytes | maskedByte[] | contentsLen | The file's binary contents masked |
