@@ -35,12 +35,12 @@ Just a quick overview of the format before we get started with the detail specif
 
 These is the required ordering of each of these components:
 
-| Section Type | Description                                                                         |
-| ------------ | ----------------------------------------------------------------------------------- |
-| Header       | The file header contains important details needed to parse the format               |
-| Metadata     | Contains metadata information relevant to the rest of the data within the container |
-| FileIndex    | Contains detailed information about how to read the files within the container      |
-| FileData     | Contains detailed information about how to read the files within the container      |
+| Section Type | Description                                                                        |
+| ------------ | ---------------------------------------------------------------------------------- |
+| Header       | The file header contains important details needed to parse the format              |
+| Metadata     | Metadata information for applications that cover the specific song data stored     |
+| FileIndex    | Defines information about what files are within the container and how to read them |
+| FileData     | Contains the actual file data                                                      |
 
 
 ## Sections
