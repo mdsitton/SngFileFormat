@@ -217,8 +217,9 @@ To submit a new entry for the registry submit a pull request to add any keys tha
 
 Currently there are no SNG specific metadata names registered but all the keys from these links should be considered taken thus far:
 
-https://github.com/TheNathannator/GuitarGame_ChartFormats/blob/main/doc/FileFormats/song.ini/Game-Specific%20Tags.md
-https://github.com/TheNathannator/GuitarGame_ChartFormats/blob/main/doc/FileFormats/song.ini/Core%20Infrastructure.md
+[GuitarGame_ChartFormats - Game Specific Tags](https://github.com/TheNathannator/GuitarGame_ChartFormats/blob/main/doc/FileFormats/song.ini/Game-Specific%20Tags.md)
+
+[GuitarGame_ChartFormats - Typical Tags](https://github.com/TheNathannator/GuitarGame_ChartFormats/blob/main/doc/FileFormats/song.ini/Typical%20Tags.md)
 
 ### Filename Registry
 
