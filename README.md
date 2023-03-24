@@ -45,7 +45,7 @@ These is the required ordering of each of these components:
 
 ## Sections
 
-### Header
+### `Header`
 | Field          | Data Type   | Size | Description                               |
 | -------------- | ----------- | ---- | ----------------------------------------- |
 | fileIdentifier | SngIdentify | 6    | SNGPKG sequence to identify the file type |
@@ -67,7 +67,7 @@ These is the required ordering of each of these components:
 | fileCount     | uint64     | 4               | Number of file and fileMeta sections            |
 | fileMetaArray | FileMeta[] | fileMetaLen - 4 | Array of fileMeta sections                      |
 
-### FileData
+### `FileData`
 | Field         | Data Type | Size        | Description                            |
 | ------------- | --------- | ----------- | -------------------------------------- |
 | fileDataLen   | uint64    | 8           | Total length in bytes of all file data |
