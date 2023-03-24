@@ -220,6 +220,8 @@ Currently there are no SNG specific metadata names registered but all the keys f
 
 ### Filename Registry
 
+The filename registry serves a similar purpose to the metadata one so that conflicting file names aren't utilized within the format that have different usages.
+
 - `notes.chart`
 - `notes.mid`
 - `song.ini` - Reserved, but will be not communicated through into sng file as this is the source of metadata in the SNG file
