@@ -141,7 +141,7 @@ Int values take the following form: (+/- sign)(digits)
 
 2. digits  - A sequence of digit chracters 0 - 9
 
-Int values also fall into the range -2147483648 to  2147483647 the size of a int32 data type
+Int values also fall within the range `-2147483648` to `2147483647` the size of a int32 data type
 
 ### float
 
