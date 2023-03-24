@@ -19,9 +19,9 @@ The following are definitions of the data types used in this file specification
 | string         | A sequence of utf-8 characters a byte[] array excluding NULL 0x00 characters as many languages use these as end of string sequences |
 | SngIdentify    | The SNGPKG file identifier. `0x53 0x4E 0x47 0x50 0x4b 0x47` as bytes. Used to identify the file format                              |
 | byte[]         | An array of bytes                                                                                                                   |
-| metadataPair[] | An array of metadataPair objects                                                                                                    |
-| fileMeta[]     | An array of fileMeta objects                                                                                                        |
-| file[]         | An array of file objects                                                                                                            |
+| MetadataPair[] | An array of metadataPair objects                                                                                                    |
+| FileMeta[]     | An array of fileMeta objects                                                                                                        |
+| File[]         | An array of file objects                                                                                                            |
 | maskedByte[]   | An array of bytes representing masked file data                                                                                     |
 
 ## Structure Overview
@@ -83,7 +83,7 @@ These is the required ordering of each of these components:
 | value    | string    | valueLen | The metadata's value                     |
 
 
-### `FileMeta` (contains the file index metadata for each `[file]` section)
+### `FileMeta` (contains the file index metadata for each `File` section)
 | Field         | Data Type | Size        | Description                                                                       |
 | ------------- | --------- | ----------- | --------------------------------------------------------------------------------- |
 | filenameLen   | byte      | 1           | The number of bytes in the filename                                               |
