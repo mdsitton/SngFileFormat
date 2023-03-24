@@ -2,7 +2,7 @@
 
 `.sng` is a simple and generic binary container format that groups a list of files and metadata into a single file.
 
-This repository contains several items a reference tool for packing and unpacking sng files to and from the format, the file spec, and a Registry of used file metadata keys, and common file names.
+This repository includes several components: a reference tool for converting SNG files to and from the designated format, the file specification, a registry of frequently used metadata keys, and a registry of file names.
 
 # SNG File Specification
 
@@ -26,7 +26,7 @@ The following are definitions of the data types used in this file specification
 
 ## Structure Overview
 
-Just a quick overview of the format before we get started with the detail specification. The file format is composed of a header plus 3 sections each of which follow the following basic format:
+Before delving into the full SNG specification, the following is a brief overview of the structure. The format consists of a header followed by three sections, each adhering to this format:
 
 | Field         | Data Type | Size          | Description                                 |
 | ------------- | --------- | ------------- | ------------------------------------------- |
@@ -50,7 +50,7 @@ These is the required ordering of each of these components:
 | -------------- | ----------- | ---- | ----------------------------------------- |
 | fileIdentifier | SngIdentify | 6    | SNGPKG sequence to identify the file type |
 | version        | uint32      | 4    | The .sng format version                   |
-| seed           | byte[]      | 16   | Random bytes for masking files            |
+| xorMask        | byte[]      | 16   | Random bytes for masking files            |
 
 
 ### `Metadata`
@@ -98,28 +98,28 @@ These is the required ordering of each of these components:
 | maskedFileBytes | maskedByte[] | contentsLen | The file's binary contents masked |
 
 ## Masking
-File Data is masked using a fairly simple algorithm which utilizes the seed field from the file header and the byte pos within that file. The following is example pseudo code to convert to the file's true contents.
+File Data is masked using a fairly simple algorithm which utilizes the xorMask field from the file header and the byte pos within that file. The following is example pseudo code to convert to the file's true contents.
 ```js
  // Iterate through the indices of the maskedFileBytes array
  for i = 0 to size(maskedFileBytes) - 1:
 
-    // Calculate the XOR key based on the current index and seed array
-    xorKey = seed[i % 16] XOR (i AND 0xFF)    // You can cast to a byte instead of "AND 0xFF" if your language supports it
+    // Calculate the XOR key based on the current index and xorMask array
+    xorKey = xorMask[i % 16] XOR (i AND 0xFF)    // You can cast to a byte instead of "AND 0xFF" if your language supports it
 
     // XOR each byte in maskedFileBytes with the xorKey
     fileBytes[i] = maskedFileBytes[i] XOR xorKey
 ```
 ## Metadata Strings
-There are some limitations to what characters are allowed within metadata strings in order to make the format simpler to serialize to ini files. These limitations apply to both keys and values. A recommendation for including data that may have these characters within it is to replace or remove the characters before serializing into the SNG format. 
+Some characters in metadata strings have restrictions to simplify serialization into INI files, affecting both keys and values. To include data with these characters, it's recommended to replace or remove them before converting into the SNG format.
 - Semicolon (;)
   - Semicolons are used to denote comments in INI files. If a semicolon is allowed in a key, it will create confusion between a key-value pair and a comment, making it difficult to parse the INI file correctly.
 - Newline characters (\r\n)
-  - Newline characters denote the end of a line in a text file. Allowing newline characters in unquoted values would make it difficult to determine where a key-value pair ends and the next one begins, leading to parsing issues.
+  - Newline characters mark the end of a line in a text file. Allowing newline characters in values makes it hard to tell where one key-value pair finishes and the next starts, causing problems when reading the file.
 
 ### Characters only disallowed for keys
 
 - Equal sign (=)
-  - The equal sign is used as a delimiter to separate keys and values in an INI file. If an equal sign is allowed in a key, it will create ambiguity in determining where the key ends and the value begins. For values this is not typically an issue because only the first = sign on a line is used to delimit the key from a value. Some values in song.ini tags include = for example if a song is including rich text tags such as `<color=#00FF00>` for indicating color for a metadata string.
+  - In an INI file, an equal sign (=) separates keys and values. Allowing an equal sign in a key can cause confusion about where the key stops and  the value starts. This issue doesn't affect values, as only the  first equal sign on a line separates the key from the value. For instance, some song.ini tags use equal signs in values, like `<color=#00FF00>`, to indicate the color of a metadata string.
 
 ## Metadata values:
 
@@ -199,7 +199,7 @@ There are also some limitations to what is allowed for file names to prevent iss
   - `LPT9`
 
 ## Design Decisions
-- The metadata is arbitrary and not tied to any specific application. There can be any number of properties. Application-specific properties can be added. However, to avoid unintentional property conflicts between the data of different applications there is a metadata keys registry also contained in this repo. Metadata should be kept to what can be serialized into an ini file. As any metadata needs to be able to round trip to/from a song.ini file. Any additional data blobs for more complex metadata should be handled as a file within the container.
+- The metadata is versatile and not confined to any particular  application. It can encompass a multitude of properties, including those specific to individual applications. To prevent inadvertent property  clashes among data from different applications, a metadata keys registry is also included in this repository. Metadata should be limited to what can be serialized into an INI file, as it must be capable of  round-tripping to and from a song.ini file. For more complex metadata  requiring additional data blobs, they should be managed as a separate  file within the container.
 - `.sng` is designed to be able to contain the binary contents of any set of files.
 - File binaries are placed at the end of the format to allow programs to efficiently scan only the `.sng`'s `metadata` or `fileMeta` sections.
 - The format has lengths defined in each major section to allow easily skipping over data that may not be required during parsing.
@@ -213,9 +213,37 @@ The registry is intended to be a helpful tool for anyone utilizing the format, p
 
 To submit a new entry for the registry submit a pull request to add any keys that your application may be making use of along with the recommended data type for this value. We recommend using a application prefix if it is something very specific to your application, however if it is a more general usage metadata value not including a prefix would make sense.
 
-## Metadata registry
+### Metadata registry
 
-Currently there are no sng specific metadata names registered but all the keys from these links should be considered taken thus far:
+Currently there are no SNG specific metadata names registered but all the keys from these links should be considered taken thus far:
 
 https://github.com/TheNathannator/GuitarGame_ChartFormats/blob/main/doc/FileFormats/song.ini/Game-Specific%20Tags.md
 https://github.com/TheNathannator/GuitarGame_ChartFormats/blob/main/doc/FileFormats/song.ini/Core%20Infrastructure.md
+
+### Filename Registry
+
+- `notes.chart`
+- `notes.mid`
+- `song.ini` - Reserved, but will be not communicated through into sng file as this is the source of metadata in the SNG file
+- `album.{png,jpg,jpeg}`
+- `background.{png,jpg,jpeg}`
+- `highway.{png,jpg,jpeg}`
+- `video.{mp4,avi,webm,vp8,ogv,mpeg}`
+- `guitar.{mp3,ogg,opus,wav}`
+- `bass.{mp3,ogg,opus,wav}`
+- `rhythm.{mp3,ogg,opus,wav}`
+- `vocals.{mp3,ogg,opus,wav}`
+- `vocals_1.{mp3,ogg,opus,wav}`
+- `vocals_2.{mp3,ogg,opus,wav}`
+- `drums.{mp3,ogg,opus,wav}`
+- `drums_1.{mp3,ogg,opus,wav}`
+- `drums_2.{mp3,ogg,opus,wav}`
+- `drums_3.{mp3,ogg,opus,wav}`
+- `drums_4.{mp3,ogg,opus,wav}`
+- `keys.{mp3,ogg,opus,wav}`
+- `song.{mp3,ogg,opus,wav}`
+- `crowd.{mp3,ogg,opus,wav}`
+- `preview.{mp3,ogg,opus,wav}`
+
+
+
