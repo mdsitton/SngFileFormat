@@ -9,20 +9,20 @@ This repository contains several items a reference tool for packing and unpackin
 
 The following are definitions of the data types used in this file specification
 
-| Data Type      | Description                                                  |
-| -------------- | ------------------------------------------------------------ |
-| byte           | 8-bit unsigned integer                                       |
-| uint32         | 32-bit unsigned integer                                      |
-| byteArr        | An array of bytes                                            |
-| uint64         | 64-bit unsigned integer                                      |
-| int32          | 32-bit signed integer                                        |
+| Data Type      | Description                                                                                                                         |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| byte           | 8-bit unsigned integer                                                                                                              |
+| uint32         | 32-bit unsigned integer                                                                                                             |
+| byteArr        | An array of bytes                                                                                                                   |
+| uint64         | 64-bit unsigned integer                                                                                                             |
+| int32          | 32-bit signed integer                                                                                                               |
 | string         | A sequence of utf-8 characters a byte[] array excluding NULL 0x00 characters as many languages use these as end of string sequences |
-| SngIdentify    | The SNGPKG file identifier. `0x53 0x4E 0x47 0x50 0x4b 0x47` as bytes. Used to identify the file format |
-| byte[]         | An array of bytes                                            |
-| metadataPair[] | An array of metadataPair objects                             |
-| fileMeta[]     | An array of fileMeta objects                                 |
-| file[]         | An array of file objects                                     |
-| maskedByte[]   | An array of bytes representing masked file data              |
+| SngIdentify    | The SNGPKG file identifier. `0x53 0x4E 0x47 0x50 0x4b 0x47` as bytes. Used to identify the file format                              |
+| byte[]         | An array of bytes                                                                                                                   |
+| metadataPair[] | An array of metadataPair objects                                                                                                    |
+| fileMeta[]     | An array of fileMeta objects                                                                                                        |
+| file[]         | An array of file objects                                                                                                            |
+| maskedByte[]   | An array of bytes representing masked file data                                                                                     |
 
 ## Structure Overview
 
@@ -173,30 +173,30 @@ There are also some limitations to what is allowed for file names to prevent iss
 - `..` (Two consecutive periods)
 - Do not end a file name with a period or a space
 - the following names are prohibited due to windows reserved file name list, this includes when using file extensions. For example both CON and CON.txt are disallowed
-  1. CON
-  2. PRN
-  3. AUX
-  4. NUL
-  5. COM0
-  6. COM1
-  7. COM2
-  8. COM3
-  9. COM4
-  10. COM5
-  11. COM6
-  12. COM7
-  13. COM8
-  14. COM9
-  15. LPT0
-  16. LPT1
-  17. LPT2
-  18. LPT3
-  19. LPT4
-  20. LPT5
-  21. LPT6
-  22. LPT7
-  23. LPT8
-  24. LPT9
+  - `CON`
+  - `PRN`
+  - `AUX`
+  - `NUL`
+  - `COM0`
+  - `COM1`
+  - `COM2`
+  - `COM3`
+  - `COM4`
+  - `COM5`
+  - `COM6`
+  - `COM7`
+  - `COM8`
+  - `COM9`
+  - `LPT0`
+  - `LPT1`
+  - `LPT2`
+  - `LPT3`
+  - `LPT4`
+  - `LPT5`
+  - `LPT6`
+  - `LPT7`
+  - `LPT8`
+  - `LPT9`
 
 ## Design Decisions
 - The metadata is arbitrary and not tied to any specific application. There can be any number of properties. Application-specific properties can be added. However, to avoid unintentional property conflicts between the data of different applications there is a metadata keys registry also contained in this repo. Metadata should be kept to what can be serialized into an ini file. As any metadata needs to be able to round trip to/from a song.ini file. Any additional data blobs for more complex metadata should be handled as a file within the container.
