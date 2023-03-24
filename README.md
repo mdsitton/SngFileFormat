@@ -201,7 +201,7 @@ There are also some limitations to what is allowed for file names to prevent iss
 ## Design Decisions
 - The metadata is versatile and not confined to any particular  application. It can encompass a multitude of properties, including those specific to individual applications. To prevent inadvertent property  clashes among data from different applications, a metadata keys registry is also included in this repository. Metadata should be limited to what can be serialized into an INI file, as it must be capable of  round-tripping to and from a song.ini file. For more complex metadata  requiring additional data blobs, they should be managed as a separate  file within the container.
 - `.sng` is designed to be able to contain the binary contents of any set of files.
-- File binaries are placed at the end of the format to allow programs to efficiently scan only the `.sng`'s `metadata` or `fileMeta` sections.
+- File binaries are placed at the end of the format, and sections have lengths to allow programs to efficiently scan only the `.sng`'s `metadata` or `fileMeta` sections whichever may be required.
 - The format has lengths defined in each major section to allow easily skipping over data that may not be required during parsing.
 - The file binary is masked so that it can't be directly detected by programs that don't know how to parse the file.
 - This format is exclusively in a LittleEndian byte ordering for efficiency on modern cpu architectures.
