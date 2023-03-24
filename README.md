@@ -132,15 +132,13 @@ Bool values take the form of 2 strings and they are case sensitive:
 
 - False
 
-### int
+### integer
 
-Int values take the following form: (+/- sign)(digits)
+Integer values take the following form: (+/- sign)(digits)
 
 1. sign  - Optional sign digit - or +
 
-2. digits  - A sequence of digit chracters 0 - 9
-
-Int values also fall within the range `-2147483648` to `2147483647` the size of a int32 data type
+2. digits  - A sequence of digit characters 0 - 9
 
 ### float
 
