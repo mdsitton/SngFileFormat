@@ -168,10 +168,10 @@ There are also some limitations to what is allowed for file names to prevent iss
 - `|` (vertical bar or pipe)
 - `?` (question mark)
 - `*` (asterisk)
-- Integer value characters below 31(0x00-0x1F), known as control characters
+- Integer value characters below 31(`0x00 - 0x1F`), known as control characters
 - `0x7f` (DEL character)
 - `..` (Two consecutive periods)
-- Do not end a file name with a period or a space
+- Do not end a file name with a period `.` or a space ` `
 - the following names are prohibited due to windows reserved file name list, this includes when using file extensions. For example both CON and CON.txt are disallowed
   - `CON`
   - `PRN`
