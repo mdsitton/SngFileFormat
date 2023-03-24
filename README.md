@@ -30,7 +30,7 @@ Just a quick overview of the format before we get started with the detail specif
 
 | Field         | Data Type | Size          | Description                                 |
 | ------------- | --------- | ------------- | ------------------------------------------- |
-| sectionLength | uint64    | 4             | Length of section in bytes after this field |
+| sectionLength | uint64    | 8             | Length of section in bytes after this field |
 | sectionData   | byte[]    | sectionLength | Bytes that make up the section              |
 
 These is the required ordering of each of these components:
@@ -63,7 +63,7 @@ These is the required ordering of each of these components:
 ### `FileIndex`
 | Field         | Data Type  | Size            | Description                                     |
 | ------------- | ---------- | --------------- | ----------------------------------------------- |
-| fileMetaLen   | uint64     | 4               | Number of bytes in the section after this field |
+| fileMetaLen   | uint64     | 8               | Number of bytes in the section after this field |
 | fileCount     | uint64     | 4               | Number of file and fileMeta sections            |
 | fileMetaArray | FileMeta[] | fileMetaLen - 4 | Array of fileMeta sections                      |
 
