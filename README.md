@@ -122,7 +122,7 @@ Some characters in metadata strings have restrictions to simplify serialization 
 
 ## Metadata values:
 
-Metadata values are strings but are designed to take a number of specific formats.
+Metadata values are strings but are intended to be represented by a number of specific formats. Applications can utilize their own formats for metadata values as they wish these are intended to provide a baseline of common types that should stay consistent between all applications.
 
 ### bool
 
