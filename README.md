@@ -64,7 +64,7 @@ These is the required ordering of each of these components:
 | Field         | Data Type  | Size            | Description                                     |
 | ------------- | ---------- | --------------- | ----------------------------------------------- |
 | fileMetaLen   | uint64     | 8               | Number of bytes in the section after this field |
-| fileCount     | uint64     | 4               | Number of file and fileMeta sections            |
+| fileCount     | uint64     | 8               | Number of file and fileMeta sections            |
 | fileMetaArray | FileMeta[] | fileMetaLen - 4 | Array of fileMeta sections                      |
 
 ### `FileData`
