@@ -13,7 +13,6 @@ The following are definitions of the data types used in this file specification
 | -------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | byte           | 8-bit unsigned integer                                                                                                              |
 | uint32         | 32-bit unsigned integer                                                                                                             |
-| byteArr        | An array of bytes                                                                                                                   |
 | uint64         | 64-bit unsigned integer                                                                                                             |
 | int32          | 32-bit signed integer                                                                                                               |
 | string         | A sequence of utf-8 characters a byte[] array excluding NULL 0x00 characters as many languages use these as end of string sequences |
