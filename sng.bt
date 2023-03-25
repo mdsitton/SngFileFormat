@@ -2,23 +2,26 @@
 // .sng is a simple and generic binary container format
 struct {
     uchar fileIdentifier[6]; // SNGPKG - 0x53 0x4E 0x47 0x50 0x4b 0x47
-    uint64 version;
-    ubyte seed[16];
-    uint64 M;
+    uint32 version;
+    ubyte xorMask[16];
+    uint64 metadataSize;
+    uint64 metaCount;
     struct {
         int32 keyLen;
         char key[keyLen];
         int32 valueLen;
         char value[valueLen];
-    } metadata[M]<optimize=false>;
-    uint64 F;
+    } metadata[metaCount]<optimize=false>;
+    uint64 fileIndexSize;
+    uint64 fileCount;
     struct {
-        int32 filenameLen;
+        ubyte filenameLen;
         char filename[filenameLen];
         uint64 contentsLen;
         uint64 contentsIndex;
-    } fileMeta[F]<optimize=false>;
+    } fileMeta[fileCount]<optimize=false>;
+    uint64 fileDataSize;
     struct FileData{
         ubyte contents[fileMeta.contentsLen];
-    } File[F]<optimize=false>;
+    } File[fileCount]<optimize=false>;
 } file;
