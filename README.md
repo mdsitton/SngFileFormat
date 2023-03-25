@@ -196,6 +196,9 @@ There are also some limitations to what is allowed for file names to prevent iss
   - `LPT9`
 
 ## Design Decisions
+- The primary advantage of using a format like this is that it enables streaming audio data from the container without having to load the entire file into memory, thanks to the use of memory-mapped files. Since no compression is applied, the file offsets remain static, which simplifies reading data from the file.
+  - In comparison, other projects often employ formats based on ZIP files. Although it's possible to seek within a ZIP file during runtime, the data typically needs to be decompressed and loaded into memory. In C#, this imposes a limit of 2GB of data per audio file. Additionally, because audio data is generally already compressed, using ZIP files introduces unnecessary overhead that slows down the process of loading audio. By opting for a format that does not rely on compression, these limitations can be avoided, allowing for more efficient streaming and access to audio data.
+
 - The metadata is versatile and not confined to any particular  application. It can encompass a multitude of properties, including those specific to individual applications. To prevent inadvertent property  clashes among data from different applications, a metadata keys registry is also included in this repository. Metadata should be limited to what can be serialized into an INI file, as it must be capable of  round-tripping to and from a song.ini file. For more complex metadata  requiring additional data blobs, they should be managed as a separate  file within the container.
 - `.sng` is designed to be able to contain the binary contents of any set of files.
 - File binaries are placed at the end of the format, and sections have lengths to allow programs to efficiently scan only the `.sng`'s `metadata` or `fileMeta` sections whichever may be required.
