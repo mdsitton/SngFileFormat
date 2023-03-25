@@ -4,17 +4,20 @@ namespace SngLib
 {
     public class SngFile
     {
-        public const ulong CurrentVersion = 1;
-        public ulong Version = CurrentVersion;
-        public byte[] Seed = new byte[16];
+        public const uint CurrentVersion = 1;
+        public uint Version = CurrentVersion;
+        public byte[] XorMask = new byte[16];
 
-        public ConcurrentDictionary<string, string> Metadata = new();
-        public ConcurrentDictionary<string, byte[]?> Files = new();
+        public Dictionary<string, string> Metadata = new();
+        public Dictionary<string, byte[]?> Files = new();
 
 
         public void AddFile(string fileName, byte[]? data)
         {
-            Files.AddOrUpdate(fileName, data, (_, _) => data);
+            if (Files.TryAdd(fileName, data))
+            {
+                Files[fileName] = data;
+            }
         }
 
         public bool TryGetString(string key, out string value)
@@ -117,22 +120,37 @@ namespace SngLib
 
         public void SetString(string key, string value)
         {
-            Metadata.AddOrUpdate(key, value, (_, _) => value);
+            if (!Metadata.TryAdd(key, value))
+            {
+                Metadata[key] = value;
+            }
         }
 
         public void SetInt(string key, int value)
         {
-            Metadata.AddOrUpdate(key, value.ToString(), (_, _) => value.ToString());
+            var newVal = value.ToString();
+            if (!Metadata.TryAdd(key, newVal))
+            {
+                Metadata[key] = newVal;
+            }
         }
 
         public void SetFloat(string key, float value)
         {
-            Metadata.AddOrUpdate(key, value.ToString(), (_, _) => value.ToString());
+            var newVal = value.ToString();
+            if (!Metadata.TryAdd(key, newVal))
+            {
+                Metadata[key] = newVal;
+            }
         }
 
         public void SetBool(string key, bool value)
         {
-            Metadata.AddOrUpdate(key, value.ToString(), (_, _) => value.ToString());
+            var newVal = value.ToString();
+            if (!Metadata.TryAdd(key, newVal))
+            {
+                Metadata[key] = newVal;
+            }
         }
 
         public Dictionary<string, string> GetRawMetadata()

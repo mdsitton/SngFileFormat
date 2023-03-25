@@ -233,7 +233,7 @@ namespace SngCli
             }
 
             SngFile sngFile = new SngFile();
-            Random.Shared.NextBytes(sngFile.Seed);
+            Random.Shared.NextBytes(sngFile.XorMask);
 
             (string name, byte[]? data) fileData = ("", null);
 
