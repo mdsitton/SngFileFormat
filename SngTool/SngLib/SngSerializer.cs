@@ -197,7 +197,7 @@ namespace SngLib
         private static long GetMetadataLength(this SngFile sngFile)
         {
             long metadataLength = 0;
-            metadataLength += sizeof(ulong) * 2; // metadata count and section length
+            metadataLength += sizeof(ulong); // metadata count
             foreach ((string key, string value) in sngFile.Metadata)
             {
                 if (string.IsNullOrEmpty(key) || string.IsNullOrEmpty(value))
@@ -215,7 +215,7 @@ namespace SngLib
         {
             long fileIndexLength = 0;
             long fileSectionLength = 0;
-            fileIndexLength += sizeof(ulong) * 2; // File count and section length
+            fileIndexLength += sizeof(ulong); // File count
             foreach ((string key, byte[]? value) in sngFile.Files)
             {
                 if (value == null)
