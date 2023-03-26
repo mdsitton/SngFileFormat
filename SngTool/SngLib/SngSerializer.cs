@@ -221,7 +221,7 @@ namespace SngLib
                 if (value == null)
                     continue;
 
-                fileIndexLength += sizeof(int); // fileName length
+                fileIndexLength += sizeof(byte); // fileName length
                 fileIndexLength += sizeof(ulong) * 2; // length/index
                 fileIndexLength += Encoding.UTF8.GetByteCount(key); // file name
                 fileSectionLength += value.Length;
@@ -309,7 +309,7 @@ namespace SngLib
             var headerData = new byte[lengthMinusData];
             sngFile.WriteHeader(headerData, ref pos);
             sngFile.WriteMetadata(metaDataLength, headerData, ref pos);
-            sngFile.WriteFileIndex(fileIndexLength, (ulong)lengthMinusData, headerData, ref pos);
+            sngFile.WriteFileIndex(fileIndexLength, (ulong)fileIndexLength, headerData, ref pos);
             headerData.WriteInt64LE(ref pos, fileSectionLength);
 
             using (var fs = File.OpenWrite(path))
