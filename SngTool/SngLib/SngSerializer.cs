@@ -13,18 +13,16 @@ namespace SngLib
         private const string FileIdentifier = "SNGPKG";
         private static readonly byte[] FileIdentifierBytes = Encoding.ASCII.GetBytes(FileIdentifier);
 
-        private static Vector<byte>[] dataIndexVectors;
+        [ThreadStatic]
+        private static Vector<byte>[]? dataIndexVectors;
 
         // values loop every 256 characters since 16 and 256 are aligned
-        private static byte[] loopLookup = new byte[256];
-
-        static SngSerializer()
-        {
-            dataIndexVectors = new Vector<byte>[Vector<byte>.Count];
-        }
+        [ThreadStatic]
+        private static byte[] loopLookup;
 
         private static void InitializeLookup(byte[] seed)
         {
+            loopLookup = new byte[256];
             for (int i = 0; i < loopLookup.Length; i++)
             {
                 loopLookup[i] = (byte)(i ^ seed[i & 0xF]);
@@ -54,6 +52,11 @@ namespace SngLib
         /// </summary>
         private static void MaskData(byte[] dataIn, byte[] dataOut, byte[] seed)
         {
+            if (dataIndexVectors == null)
+            {
+                // Precompute the lookup table for xormask
+                InitializeDataIndexVectors(seed);
+            }
             int vecSize = Vector<byte>.Count;
             int vecCount = dataIn.Length / vecSize;
             int lastByteIndex = vecCount * vecSize;
@@ -96,9 +99,6 @@ namespace SngLib
             if (sngFile.Version != SngFile.CurrentVersion)
                 throw new NotSupportedException("Unsupported SNG file version");
 
-            // Precompute the lookup table for xormask
-            InitializeDataIndexVectors(sngFile.XorMask);
-
             // Read metadata
             ulong metadataLen = fs.ReadUInt64LE();
             ulong metadataCount = fs.ReadUInt64LE();
@@ -134,7 +134,7 @@ namespace SngLib
                 {
                     throw new FormatException("File name length value cannot be negative");
                 }
-                var fileNameBytes = new byte[16];
+                var fileNameBytes = new byte[fileNameLength];
                 fs.Read(fileNameBytes);
 
                 string fileName = Encoding.UTF8.GetString(fileNameBytes);
@@ -153,10 +153,13 @@ namespace SngLib
                 fs.Read(contents);
 
                 // Unmask data
-                MaskData(contents, contents, sngFile.XorMask);
 
-                sngFile.AddFile(name, contents);
+                var contentsCopy = new byte[contents.Length];
+                MaskData(contents, contentsCopy, sngFile.XorMask);
+
+                sngFile.AddFile(name, contentsCopy);
             }
+            dataIndexVectors = null;
 
             return sngFile;
         }
@@ -283,10 +286,6 @@ namespace SngLib
             if (sngFile.Version != SngFile.CurrentVersion)
                 throw new NotSupportedException("Unsupported SNG file version");
 
-
-            // Precompute the lookup table for xormask
-            InitializeDataIndexVectors(sngFile.XorMask);
-
             // Calculate full file size for allocating a MemoryMappedFile
             // We need to keep the individual lengths around for writing out the header as well
 
@@ -331,6 +330,8 @@ namespace SngLib
                     fs.Write(contents, 0, contents.Length);
                 }
             }
+
+            dataIndexVectors = null;
         }
     }
 }
