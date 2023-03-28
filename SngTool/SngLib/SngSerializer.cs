@@ -302,15 +302,15 @@ namespace SngLib
             long filePreLength = sizeof(ulong);
             (long fileIndexLength, long fileSectionLength) = sngFile.GetFileLengths();
 
-            long totalLength = headerSize + metaDataPreLength + metaDataLength + fileIndexPreLength + fileIndexLength + filePreLength + fileSectionLength;
+            // long totalLength = headerSize + metaDataPreLength + metaDataLength + fileIndexPreLength + fileIndexLength + filePreLength + fileSectionLength;
             long lengthMinusData = headerSize + metaDataPreLength + metaDataLength + fileIndexPreLength + fileIndexLength + filePreLength;
 
             int pos = 0;
             var headerData = new byte[lengthMinusData];
             sngFile.WriteHeader(headerData, ref pos);
             sngFile.WriteMetadata(metaDataLength, headerData, ref pos);
-            sngFile.WriteFileIndex(fileIndexLength, (ulong)fileIndexLength, headerData, ref pos);
-            headerData.WriteInt64LE(ref pos, fileSectionLength);
+            sngFile.WriteFileIndex(fileIndexLength, (ulong)headerData.Length, headerData, ref pos);
+            headerData.WriteUInt64LE(ref pos, (ulong)fileSectionLength);
 
             using (var fs = File.OpenWrite(path))
             {
@@ -328,7 +328,7 @@ namespace SngLib
                     MaskData(contents, contentsCopy, sngFile.XorMask);
                     contents = contentsCopy;
 
-                    fs.Write(contents);
+                    fs.Write(contents, 0, contents.Length);
                 }
             }
         }
