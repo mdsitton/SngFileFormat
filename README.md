@@ -4,6 +4,48 @@
 
 This repository includes several components: a reference tool for converting SNG files to and from the designated format, the file specification, a registry of frequently used metadata keys, and a registry of file names.
 
+# SngCli
+The SngCli tool is a basic command line tool that has a couple of operating commands each with their own set of command line flags:
+
+```
+Usage: SngCli [command] [options]
+Options:
+  -h, --help            Show help message
+  -v, --version         Display version information
+      --verbose         Display more information such as audio encoder output.
+
+encode:
+  -o, --out FOLDER      Specify output folder location for SNG files
+  -i, --input FOLDER    Specify input folder to search for song folders
+      --skipExisting    If the song to be encoded already exists as an sng in the output folder skip it
+      --skipUnknown     Skip unknown files.By default unknown files are included (All audio and images of supported formats are transcoded)
+      --noThreads       Disable threading only process one song at a time. Can also be useful when a song has an error along with --verbose.
+      --videoExclude    Exclude video files
+      --opusEncode      Encode all audio to opus
+      --opusBitrate     Set opus encoder bitrate, default: 128
+      --jpegEncode      Encode all images to JPEG
+      --jpegQuality     JPEG encoding quality, default: 75
+      --albumUpscale    Enable upscaling album art, by default images are only shrunk.
+      --albumResize     Resize album art to set size. Smaller resolutions load faster in-game, Default size: 512x512
+                            Supported Sizes:
+                                Nearest - This uses next size below the image size
+                                256x256
+                                384x384
+                                512x512
+                                768x768
+                                1024x1024
+                                1536x1536
+                                2048x2048
+
+decode:
+  -o, --out FOLDER      Specify output folder location for extracted song folders
+  -i, --input FOLDER    Specify input folder to search for SNG files
+      --noThreads       Disable threading only process one song at a time.
+```
+
+When encoding this tool can also do audio transcoding to opus, and image transcoding to JPEG. Opus encoding takes a significant amount of time for larger song libraries. The more cpu cores you have, the tool can take advantage of this, and encode multiple songs in parallel speeding up the process significantly.
+
+
 # SNG File Specification
 
 
@@ -198,7 +240,6 @@ There are also some limitations to what is allowed for file names to prevent iss
 ## Design Decisions
 - The primary advantage of using a format like this is that it enables streaming audio data from the container without having to load the entire file into memory, thanks to the use of memory-mapped files. Since no compression is applied, the file offsets remain static, which simplifies reading data from the file.
   - In comparison, other projects often employ formats based on ZIP files. Although it's possible to seek within a ZIP file during runtime, the data typically needs to be decompressed and loaded into memory. In C#, this imposes a limit of 2GB of data per audio file. Additionally, because audio data is generally already compressed, using ZIP files introduces unnecessary overhead that slows down the process of loading audio. By opting for a format that does not rely on compression, these limitations can be avoided, allowing for more efficient streaming and access to audio data.
-
 - The metadata is versatile and not confined to any particular  application. It can encompass a multitude of properties, including those specific to individual applications. To prevent inadvertent property  clashes among data from different applications, a metadata keys registry is also included in this repository. Metadata should be limited to what can be serialized into an INI file, as it must be capable of  round-tripping to and from a song.ini file. For more complex metadata  requiring additional data blobs, they should be managed as a separate  file within the container.
 - `.sng` is designed to be able to contain the binary contents of any set of files.
 - File binaries are placed at the end of the format, and sections have lengths to allow programs to efficiently scan only the `.sng`'s `metadata` or `fileMeta` sections whichever may be required.
