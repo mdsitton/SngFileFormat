@@ -14,8 +14,8 @@ namespace SngCli
         {
             "h", "help",
             "v", "version",
-            "o", "output",
-            "i", "input",
+            "o", "out",
+            "i", "in",
             "verbose",
             "noThreads",
             "videoExclude",
@@ -39,7 +39,7 @@ namespace SngCli
             Console.WriteLine("      --verbose         Display more information such as audio encoder output.");
             Console.WriteLine("\nencode: ");
             Console.WriteLine("  -o, --out FOLDER      Specify output folder location for SNG files");
-            Console.WriteLine("  -i, --input FOLDER    Specify input folder to search for song folders");
+            Console.WriteLine("  -i, --in FOLDER       Specify input folder to search for song folders");
             Console.WriteLine("      --skipExisting    If the song to be encoded already exists as an sng in the output folder skip it");
             Console.WriteLine("      --skipUnknown     Skip unknown files.By default unknown files are included (All audio and images of supported formats are transcoded)");
             Console.WriteLine("      --noThreads       Disable threading only process one song at a time. Can also be useful when a song has an error along with --verbose.");
