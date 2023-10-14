@@ -361,8 +361,9 @@ namespace SngCli
 
             if (!Directory.Exists(conf.InputPath))
             {
-                ConMan.Out("Input folder does not exist");
+                ConMan.Out($"Input folder does not exist {conf.InputPath}");
                 Program.DisplayHelp();
+                Environment.Exit(1);
                 return;
             }
 

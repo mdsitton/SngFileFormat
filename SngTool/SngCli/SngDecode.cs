@@ -178,6 +178,7 @@ namespace SngCli
             {
                 ConMan.Out("Input folder does not exist");
                 Program.DisplayHelp();
+                Environment.Exit(1);
                 return;
             }
 

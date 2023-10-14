@@ -19,7 +19,7 @@ namespace SngLib
 
         // values loop every 256 characters since 16 and 256 are aligned
         [ThreadStatic]
-        private static byte[] loopLookup;
+        private static byte[] loopLookup = new byte[256];
 
         private static void InitializeLookup(byte[] seed)
         {

@@ -128,6 +128,7 @@ namespace SngCli
                     {
                         string value = args[++i];
                         parsedArguments[key] = value;
+                        Console.WriteLine(value);
                     }
                     else
                     {
@@ -168,22 +169,33 @@ namespace SngCli
             }
             (var command, args) = GetCommandArg(args);
 
-            var cliArgs = ProcessArguments(args);
-
-            if (cliArgs == null)
-                return;
-
-
-            // Commands
+            // Proccess commands
             switch (command)
             {
                 case "encode":
-                    _ = new SngEncodingConfig(cliArgs);
-                    await SngEncode.ProcessSongs();
-                    break;
+                    {
+
+                        var cliArgs = ProcessArguments(args);
+
+                        if (cliArgs == null)
+                            return;
+                        _ = new SngEncodingConfig(cliArgs);
+                        await SngEncode.ProcessSongs();
+                        break;
+                    }
                 case "decode":
-                    _ = new SngDecodingOptions(cliArgs);
-                    await SngDecode.ProcessSongs();
+                    {
+                        var cliArgs = ProcessArguments(args);
+
+                        if (cliArgs == null)
+                            return;
+                        _ = new SngDecodingOptions(cliArgs);
+                        await SngDecode.ProcessSongs();
+                        break;
+                    }
+                default:
+                    Console.WriteLine("Please specify a command: encode, decode");
+                    DisplayHelp();
                     break;
             }
         }
