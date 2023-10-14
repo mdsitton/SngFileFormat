@@ -4,8 +4,7 @@ using System.Runtime.CompilerServices;
 
 namespace Cysharp.Collections
 {
-    internal sealed unsafe class PointerMemoryManager<T> : MemoryManager<T>
-        where T : unmanaged
+    internal sealed unsafe class PointerMemoryManager : MemoryManager<byte>
     {
         byte* pointer;
         int length;
@@ -22,16 +21,16 @@ namespace Cysharp.Collections
         {
         }
 
-        public override Span<T> GetSpan()
+        public override Span<byte> GetSpan()
         {
             usingMemory = true;
-            return new Span<T>(pointer, length);
+            return new Span<byte>(pointer, length);
         }
 
         public override MemoryHandle Pin(int elementIndex = 0)
         {
             if ((uint)elementIndex >= (uint)length) ThrowHelper.ThrowIndexOutOfRangeException();
-            return new MemoryHandle(pointer + elementIndex * Unsafe.SizeOf<T>(), default, this);
+            return new MemoryHandle(pointer + elementIndex, default, this);
         }
 
         public override void Unpin()

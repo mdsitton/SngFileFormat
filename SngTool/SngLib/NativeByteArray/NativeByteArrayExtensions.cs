@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 
 #if !NETSTANDARD2_0 && !UNITY_2019_1_OR_NEWER
 
@@ -11,7 +11,7 @@ namespace Cysharp.Collections
 {
     public static class NativeMemoryArrayExtensions
     {
-        public static async Task ReadFromAsync(this NativeMemoryArray<byte> buffer, Stream stream, IProgress<long>? progress = null, CancellationToken cancellationToken = default)
+        public static async Task ReadFromAsync(this NativeByteArray buffer, Stream stream, IProgress<long>? progress = null, CancellationToken cancellationToken = default)
         {
             var writer = buffer.CreateBufferWriter();
 
@@ -52,7 +52,7 @@ namespace Cysharp.Collections
             buffer.Resize(readTotal);
         }
 
-        public static async Task WriteToFileAsync(this NativeMemoryArray<byte> buffer, string path, FileMode mode = FileMode.Create, IProgress<int>? progress = null, CancellationToken cancellationToken = default)
+        public static async Task WriteToFileAsync(this NativeByteArray buffer, string path, FileMode mode = FileMode.Create, IProgress<int>? progress = null, CancellationToken cancellationToken = default)
         {
             using (var fs = new FileStream(path, mode, FileAccess.Write, FileShare.ReadWrite, 1, useAsync: true))
             {
@@ -60,7 +60,7 @@ namespace Cysharp.Collections
             }
         }
 
-        public static async Task WriteToAsync(this NativeMemoryArray<byte> buffer, Stream stream, int chunkSize = int.MaxValue, IProgress<int>? progress = null, CancellationToken cancellationToken = default)
+        public static async Task WriteToAsync(this NativeByteArray buffer, Stream stream, int chunkSize = int.MaxValue, IProgress<int>? progress = null, CancellationToken cancellationToken = default)
         {
             foreach (var item in buffer.AsReadOnlyMemoryList(chunkSize))
             {
