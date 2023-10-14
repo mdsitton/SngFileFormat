@@ -374,6 +374,7 @@ namespace SngCli
             List<string> songFolders = SearchForFolders(conf.InputPath!);
 
             ConMan.ProgressItems = songFolders.Count;
+            ConMan.Out($"Song count: {songFolders.Count}");
             await Utils.ForEachAsync(songFolders, async (songFolder, token) =>
             {
                 try

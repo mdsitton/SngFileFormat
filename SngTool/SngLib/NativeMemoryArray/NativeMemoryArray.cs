@@ -1,4 +1,4 @@
-﻿#nullable enable
+#nullable enable
 
 using System;
 using System.Buffers;
@@ -45,6 +45,7 @@ namespace Cysharp.Collections
         public NativeMemoryArray(long length, bool skipZeroClear = false, bool addMemoryPressure = false)
         {
             this.length = length;
+            this.allocatedLength = length;
             this.addMemoryPressure = addMemoryPressure;
 
             internalAllocated = true;
@@ -86,9 +87,10 @@ namespace Cysharp.Collections
 
         public bool Resize(long newLength, bool skipZeroClear = false)
         {
-            if (newLength < allocatedLength)
+            if (newLength <= allocatedLength)
             {
                 length = newLength;
+                return true;
             }
             if (!internalAllocated)
             {

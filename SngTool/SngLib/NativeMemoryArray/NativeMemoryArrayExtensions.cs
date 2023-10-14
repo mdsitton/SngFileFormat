@@ -1,4 +1,4 @@
-﻿#nullable enable
+#nullable enable
 
 #if !NETSTANDARD2_0 && !UNITY_2019_1_OR_NEWER
 
