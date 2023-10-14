@@ -4,6 +4,7 @@ using System.IO.MemoryMappedFiles;
 using System.Numerics;
 using System.Text;
 using BinaryEx;
+using Cysharp.Collections;
 
 namespace SngLib
 {
@@ -50,7 +51,7 @@ namespace SngLib
         /// An optimized Masking routine using Vector<byte> objects along with some pre-computation
         /// This is about 5-10x faster than the standard implementation on coreclr, in unity/mono it's slower
         /// </summary>
-        private static void MaskData(byte[] dataIn, byte[] dataOut, byte[] seed)
+        private static void MaskData(NativeMemoryArray<byte> dataIn, NativeMemoryArray<byte> dataOut, byte[] seed)
         {
             if (dataIndexVectors == null)
             {
@@ -58,21 +59,21 @@ namespace SngLib
                 InitializeDataIndexVectors(seed);
             }
             int vecSize = Vector<byte>.Count;
-            int vecCount = dataIn.Length / vecSize;
-            int lastByteIndex = vecCount * vecSize;
+            long vecCount = dataIn.Length / vecSize;
+            long lastByteIndex = vecCount * vecSize;
             var lookupSizeMask = (loopLookup.Length / vecSize) - 1;
 
-            for (int vectorIndex = 0; vectorIndex < vecCount; ++vectorIndex)
+            for (long vectorIndex = 0; vectorIndex < vecCount; ++vectorIndex)
             {
-                int byteIndex = vectorIndex * vecSize;
-                Vector<byte> dataVector = new Vector<byte>(dataIn, byteIndex);
+                long byteIndex = vectorIndex * vecSize;
+                Vector<byte> dataVector = new Vector<byte>(dataOut.AsSpan(byteIndex));
 
-                Vector<byte> maskedData = dataVector ^ dataIndexVectors[vectorIndex & lookupSizeMask];
-                maskedData.CopyTo(dataOut, byteIndex);
+                Vector<byte> maskedData = dataVector ^ dataIndexVectors![vectorIndex & lookupSizeMask];
+                maskedData.CopyTo(dataOut.AsSpan(byteIndex));
             }
 
             // Handle the remaining bytes
-            for (int i = lastByteIndex; i < dataIn.Length; i++)
+            for (long i = lastByteIndex; i < dataIn.Length; i++)
             {
                 dataOut[i] = (byte)(dataIn[i] ^ loopLookup[i & 0xFF]);
             }
@@ -145,26 +146,29 @@ namespace SngLib
 
             foreach ((ulong pos, ulong size, string name) in fileInfo)
             {
+                if (size > long.MaxValue)
+                {
+                    Console.WriteLine("Warning: This tool doesn't support loading files longer than 7 Exabytes skipping file");
+                    continue;
+                }
                 // Read file contents
                 if (fs.Position != (long)pos)
                     fs.Seek((long)pos, SeekOrigin.Begin);
 
-                byte[] contents = new byte[(int)size];
-                fs.Read(contents);
+                var contents = new NativeMemoryArray<byte>((long)size, skipZeroClear: true);
+                fs.ReadToNativeArray(contents);
 
                 // Unmask data
+                MaskData(contents, contents, sngFile.XorMask);
 
-                var contentsCopy = new byte[contents.Length];
-                MaskData(contents, contentsCopy, sngFile.XorMask);
-
-                sngFile.AddFile(name, contentsCopy);
+                sngFile.AddFile(name, contents);
             }
             dataIndexVectors = null;
 
             return sngFile;
         }
 
-        private static ulong CountNonNullFiles(IEnumerable<byte[]?> data)
+        private static ulong CountNonNullFiles(IEnumerable<NativeMemoryArray<byte>?> data)
         {
             ulong count = 0;
             foreach (var item in data)
@@ -219,7 +223,7 @@ namespace SngLib
             long fileIndexLength = 0;
             long fileSectionLength = 0;
             fileIndexLength += sizeof(ulong); // File count
-            foreach ((string key, byte[]? value) in sngFile.Files)
+            foreach ((string key, NativeMemoryArray<byte>? value) in sngFile.Files)
             {
                 if (value == null)
                     continue;
@@ -266,7 +270,7 @@ namespace SngLib
             bytesOut.WriteUInt64LE(ref pos, (ulong)fileIndexSize);
             bytesOut.WriteUInt64LE(ref pos, (ulong)CountNonNullFiles(sngFile.Files.Values));
             ulong fileOffset = startOfFileIndex;
-            foreach ((string key, byte[]? value) in sngFile.Files)
+            foreach ((string key, NativeMemoryArray<byte>? value) in sngFile.Files)
             {
                 if (value == null)
                     continue; ;
@@ -319,15 +323,11 @@ namespace SngLib
                 {
                     if (fileEntry.Value == null)
                         continue;
-                    byte[] contents = fileEntry.Value;
 
-                    // Copy original data for masking
-                    var contentsCopy = new byte[contents.Length];
+                    var contents = fileEntry.Value;
+                    MaskData(contents, contents, sngFile.XorMask);
 
-                    MaskData(contents, contentsCopy, sngFile.XorMask);
-                    contents = contentsCopy;
-
-                    fs.Write(contents, 0, contents.Length);
+                    fs.WriteFromNativeArray(contents);
                 }
             }
 

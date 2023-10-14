@@ -120,6 +120,7 @@ namespace SngCli
 
             for (int i = 0; i < args.Length; i++)
             {
+                Console.WriteLine(args[i]);
                 if (argPattern.IsMatch(args[i]))
                 {
                     string key = argPattern.Replace(args[i], ""); // Remove the '-' or '--' prefix

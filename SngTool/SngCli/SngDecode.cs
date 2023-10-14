@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Cysharp.Collections;
 using SngLib;
 using SongLib;
 
@@ -160,7 +161,7 @@ namespace SngCli
             // iterate through files and save them to disk
             foreach ((var name, var data) in sngFile.Files)
             {
-                await File.WriteAllBytesAsync(Path.Combine(outputFolder, name), data!);
+                await data!.WriteToFileAsync(Path.Combine(outputFolder, name));
             }
             ConMan.UpdateProgress(Interlocked.Increment(ref completedSongs));
         }

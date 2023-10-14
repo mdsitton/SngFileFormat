@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using NVorbis;
 using NLayer;
+using Cysharp.Collections;
 
 namespace SongLib
 {
@@ -13,9 +14,9 @@ namespace SongLib
     {
         public static bool verbose = false;
 
-        public static async Task<(string filename, byte[]? data)> ToOpus(string filePath, int bitRate)
+        public static async Task<(string filename, NativeMemoryArray<byte>? data)> ToOpus(string filePath, int bitRate)
         {
-            (string filename, byte[]? data) outData;
+            (string filename, NativeMemoryArray<byte>? data) outData;
 
             // opusenc doesn't support loading mp3 or ogg vorbis
             if (filePath.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase))
@@ -42,7 +43,7 @@ namespace SongLib
         /// <summary>
         /// Decode OGG/Vorbis file and convert into an opus file
         /// </summary>
-        private static async Task<(string filename, byte[]? data)> EncodeVorbisToOpus(string filePath, int bitRate)
+        private static async Task<(string filename, NativeMemoryArray<byte>? data)> EncodeVorbisToOpus(string filePath, int bitRate)
         {
 
             using (var fs = File.OpenRead(filePath))
@@ -88,7 +89,7 @@ namespace SongLib
         /// <summary>
         /// Decode mp3 file and convert into a wav file
         /// </summary>
-        private static async Task<(string filename, byte[]? data)> EncodeMp3ToOpus(string filePath, int bitRate)
+        private static async Task<(string filename, NativeMemoryArray<byte>? data)> EncodeMp3ToOpus(string filePath, int bitRate)
         {
             using (var fs = File.OpenRead(filePath))
             using (var bs = new BufferedStream(fs))
@@ -121,7 +122,7 @@ namespace SongLib
             }
         }
 
-        private async static Task<byte[]?> RunAudioProcess(string processName, string arguments, MemoryMappedFile? file = null, bool debug = false)
+        private async static Task<NativeMemoryArray<byte>?> RunAudioProcess(string processName, string arguments, MemoryMappedFile? file = null, bool debug = false)
         {
             ProcessStartInfo info = new ProcessStartInfo
             {
@@ -147,87 +148,88 @@ namespace SongLib
 
                 process.BeginErrorReadLine();
 
-                using (MemoryStream outputStream = new MemoryStream())
+                // Start with a 16mb buffer which should be able to handle the vast majority of cases
+                // if it needs to be resized it will be automatically grown as-needed
+                NativeMemoryArray<byte> outputData = new NativeMemoryArray<byte>(skipZeroClear: true);
+
+                bool copyError = false;
+
+                Task? writeTask = null;
+
+                if (file != null)
                 {
-                    bool copyError = false;
-
-                    Task? writeTask = null;
-
-                    if (file != null)
-                    {
-                        // Write inputBytes to the process's StandardInput asynchronously
-                        writeTask = Task.Run(async () =>
-                        {
-                            try
-                            {
-                                using Stream memFile = file.CreateViewStream();
-                                using Stream stdin = process.StandardInput.BaseStream;
-
-                                await memFile.CopyToAsync(stdin);
-                            }
-                            catch (Exception e)
-                            {
-                                copyError = true;
-                                Console.WriteLine($"Error sending data to {processName}");
-                                Console.WriteLine(e);
-                            }
-                        });
-                    }
-
-                    // Read outputData from the process's StandardOutput asynchronously
-                    Task readTask = Task.Run(async () =>
+                    // Write inputBytes to the process's StandardInput asynchronously
+                    writeTask = Task.Run(async () =>
                     {
                         try
                         {
-                            using (Stream stdout = process.StandardOutput.BaseStream)
-                            {
-                                await stdout.CopyToAsync(outputStream);
-                            }
+                            using Stream memFile = file.CreateViewStream();
+                            using Stream stdin = process.StandardInput.BaseStream;
+
+                            await memFile.CopyToAsync(stdin);
                         }
                         catch (Exception e)
                         {
                             copyError = true;
-                            Console.WriteLine($"Error reading data from {processName}");
+                            Console.WriteLine($"Error sending data to {processName}");
                             Console.WriteLine(e);
                         }
                     });
+                }
 
-                    if (writeTask != null)
+                // Read outputData from the process's StandardOutput asynchronously
+                Task readTask = Task.Run(async () =>
+                {
+                    try
                     {
-                        // Wait for both tasks to complete
-                        await Task.WhenAll(writeTask, readTask);
+                        using (Stream stdout = process.StandardOutput.BaseStream)
+                        {
+                            await outputData.ReadFromAsync(stdout);
+                        }
                     }
-                    else
+                    catch (Exception e)
                     {
-                        await readTask;
+                        copyError = true;
+                        Console.WriteLine($"Error reading data from {processName}");
+                        Console.WriteLine(e);
                     }
+                });
 
-                    process.WaitForExit();
+                if (writeTask != null)
+                {
+                    // Wait for both tasks to complete
+                    await Task.WhenAll(writeTask, readTask);
+                }
+                else
+                {
+                    await readTask;
+                }
 
+                process.WaitForExit();
+
+                if (process.ExitCode == 1)
+                {
+                    Console.WriteLine($"{processName} encoding error!");
                     if (process.ExitCode == 1)
                     {
-                        Console.WriteLine($"{processName} encoding error!");
-                        if (process.ExitCode == 1)
-                        {
-                            Console.WriteLine(process.StandardError.ReadToEnd());
-                        }
-                        return null;
+                        Console.WriteLine(process.StandardError.ReadToEnd());
                     }
-
-                    if (copyError)
-                    {
-                        Console.WriteLine($"WARNING: {processName} stopped before full input data was sent, this isn't always bad but double check this audio file you can run verbose mode to get the output of the opus encoder to verify!");
-                    }
-
-                    return outputStream.ToArray();
+                    return null;
                 }
+
+                if (copyError)
+                {
+                    Console.WriteLine($"WARNING: {processName} stopped before full input data was sent, this isn't always bad but double check this audio file you can run verbose mode to get the output of the opus encoder to verify!");
+                }
+
+                return outputData;
             }
         }
 
         /// <summary>
         /// Encode opus file from <see cref="PcmFileWriter">
         /// </summary>
-        private async static Task<byte[]?> EncodePcmToOpus(PcmFileWriter file, int bitRate)
+        private async static Task<NativeMemoryArray<byte>?> EncodePcmToOpus(PcmFileWriter file, int bitRate)
         {
             var args = $"--vbr --framesize 60 --bitrate {bitRate} --discard-pictures --discard-comments --raw --raw-bits {PcmFileWriter.BitsPerSample} --raw-rate {file.SampleRate} --raw-chan {file.Channels} - -";
             return await RunAudioProcess("opusenc", args, file.mappedFile, verbose);
@@ -236,7 +238,7 @@ namespace SongLib
         /// <summary>
         /// Encode opus file from byte array
         /// </summary>
-        private async static Task<(string filename, byte[]? data)> EncodeFileToOpus(string filePath, MemoryMappedFile inputData, int bitRate)
+        private async static Task<(string filename, NativeMemoryArray<byte>? data)> EncodeFileToOpus(string filePath, MemoryMappedFile inputData, int bitRate)
         {
             var args = $"--vbr --framesize 60 --bitrate {bitRate} --discard-pictures --discard-comments - -";
             var encodeData = await RunAudioProcess("opusenc", args, inputData, verbose);
@@ -257,7 +259,7 @@ namespace SongLib
         /// <summary>
         /// Encode opus file from path
         /// </summary>
-        private async static Task<(string filename, byte[]? data)> EncodeFileToOpus(string filePath, int bitRate)
+        private async static Task<(string filename, NativeMemoryArray<byte>? data)> EncodeFileToOpus(string filePath, int bitRate)
         {
             using (var mmf = MemoryMappedFile.CreateFromFile(filePath))
             {

@@ -1,4 +1,5 @@
-using System.Collections.Concurrent;
+using System.Collections.Generic;
+using Cysharp.Collections;
 
 namespace SngLib
 {
@@ -9,10 +10,9 @@ namespace SngLib
         public byte[] XorMask = new byte[16];
 
         public Dictionary<string, string> Metadata = new();
-        public Dictionary<string, byte[]?> Files = new();
+        public Dictionary<string, NativeMemoryArray<byte>?> Files = new();
 
-
-        public void AddFile(string fileName, byte[]? data)
+        public void AddFile(string fileName, NativeMemoryArray<byte>? data)
         {
             if (Files.TryAdd(fileName, data))
             {

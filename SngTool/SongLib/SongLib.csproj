@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\NLayer\NLayer.csproj" />
+    <ProjectReference Include="..\SngLib\SngLib.csproj" />
   </ItemGroup>
 
 </Project>

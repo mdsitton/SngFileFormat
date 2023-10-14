@@ -1,4 +1,5 @@
 using System;
+using Cysharp.Collections;
 using SixLabors.ImageSharp.Formats.Jpeg;
 
 namespace SongLib
@@ -104,9 +105,11 @@ namespace SongLib
         /// <param name="upscale">Enables image rescaling</param>
         /// <param name="size">Resize images to specific sizes or the nearest option lower</param>
         /// <returns>byte array of new image</returns>
-        public async static Task<(string fileName, byte[]?)> EncodeImageToJpeg(string filePath, int quality = 75, bool upscale = false, SizeTiers size = SizeTiers.Size512x512)
+        public async static Task<(string fileName, NativeMemoryArray<byte>?)> EncodeImageToJpeg(string filePath, int quality = 75, bool upscale = false, SizeTiers size = SizeTiers.Size512x512)
         {
             var ms = new MemoryStream();
+
+            var output = new NativeMemoryArray<byte>(skipZeroClear: true);
 
             try
             {
@@ -126,13 +129,14 @@ namespace SongLib
                         ColorType = JpegEncodingColor.Rgb,
                         SkipMetadata = true
                     };
-                    await image.SaveAsJpegAsync(ms, encoder);
-                    await ms.FlushAsync();
+                    var jpgStream = output.AsStream();
+                    await image.SaveAsJpegAsync(jpgStream, encoder);
+                    output.Resize(jpgStream.Position);
 
                     if (upscale || ms.Length < file.Length)
                     {
                         var name = Path.GetFileNameWithoutExtension(filePath);
-                        return ($"{name}.jpg", ms.ToArray());
+                        return ($"{name}.jpg", output);
                     }
                 }
             }
@@ -142,7 +146,7 @@ namespace SongLib
             }
 
             // Return original file if it's smaller in size or if we encountered an error
-            return (Path.GetFileName(filePath), await File.ReadAllBytesAsync(filePath));
+            return (Path.GetFileName(filePath), await LargeFile.ReadAllBytesAsync(filePath));
         }
     }
 }

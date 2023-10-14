@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Cysharp.Collections;
 using SngLib;
 using SongLib;
 
@@ -235,7 +236,7 @@ namespace SngCli
             SngFile sngFile = new SngFile();
             Random.Shared.NextBytes(sngFile.XorMask);
 
-            (string name, byte[]? data) fileData = ("", null);
+            (string name, NativeMemoryArray<byte>? data) fileData = ("", null);
 
             var fileList = Directory.GetFiles(songFolder);
 
@@ -258,7 +259,7 @@ namespace SngCli
                             }
                             else
                             {
-                                fileData = (fileName, await File.ReadAllBytesAsync(file));
+                                fileData = (fileName, await LargeFile.ReadAllBytesAsync(file));
                             }
                             break;
                         }
@@ -275,11 +276,11 @@ namespace SngCli
                 }
                 else if (string.Equals(fileName, "notes.mid", StringComparison.OrdinalIgnoreCase))
                 {
-                    fileData = ("notes.mid", await File.ReadAllBytesAsync(file));
+                    fileData = ("notes.mid", await LargeFile.ReadAllBytesAsync(file));
                 }
                 else if (string.Equals(fileName, "notes.chart", StringComparison.OrdinalIgnoreCase))
                 {
-                    fileData = ("notes.chart", await File.ReadAllBytesAsync(file));
+                    fileData = ("notes.chart", await LargeFile.ReadAllBytesAsync(file));
                 }
                 else if (imageRegex.IsMatch(file))
                 {
@@ -292,7 +293,7 @@ namespace SngCli
                         else
                         {
 
-                            fileData = (fileName, await File.ReadAllBytesAsync(file));
+                            fileData = (fileName, await LargeFile.ReadAllBytesAsync(file));
                         }
                     }
                     else
@@ -308,7 +309,7 @@ namespace SngCli
                                 else
                                 {
 
-                                    fileData = (fileName, await File.ReadAllBytesAsync(file));
+                                    fileData = (fileName, await LargeFile.ReadAllBytesAsync(file));
                                 }
                                 break;
                             }
@@ -318,11 +319,12 @@ namespace SngCli
                 }
                 else if (!conf.VideoExclude && videoRegex.IsMatch(file) && fileName.StartsWith("video", StringComparison.OrdinalIgnoreCase))
                 {
-                    fileData = (fileName, await File.ReadAllBytesAsync(file));
+                    fileData = (fileName, await LargeFile.ReadAllBytesAsync(file));
                 }
                 else if (!conf.SkipUnknown) // Include other unknown files
                 {
-                    fileData = (fileName, await File.ReadAllBytesAsync(file));
+
+                    fileData = (fileName, await LargeFile.ReadAllBytesAsync(file));
                 }
 
                 if (fileData.data != null)
