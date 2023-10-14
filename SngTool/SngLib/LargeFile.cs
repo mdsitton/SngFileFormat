@@ -3,18 +3,18 @@ using Cysharp.Collections;
 
 public static class LargeFile
 {
-    public static async Task<NativeMemoryArray<byte>> ReadAllBytesAsync(string path)
+    public static async Task<NativeByteArray> ReadAllBytesAsync(string path)
     {
         using (FileStream f = File.OpenRead(path))
         {
             var fileLength = f.Length;
-            var arr = new NativeMemoryArray<byte>(fileLength, skipZeroClear: true);
+            var arr = new NativeByteArray(fileLength, skipZeroClear: true);
             await arr.ReadFromAsync(f);
             return arr;
         }
     }
 
-    public static void ReadToNativeArray(this Stream stream, NativeMemoryArray<byte> arr)
+    public static void ReadToNativeArray(this Stream stream, NativeByteArray arr)
     {
         var writer = arr.CreateBufferWriter();
 
@@ -64,7 +64,7 @@ public static class LargeFile
     //     }
     // }
 
-    public static void WriteFromNativeArray(this Stream stream, NativeMemoryArray<byte> arr, int chunkSize = int.MaxValue)
+    public static void WriteFromNativeArray(this Stream stream, NativeByteArray arr, int chunkSize = int.MaxValue)
     {
         foreach (var item in arr.AsReadOnlyMemoryList(chunkSize))
         {

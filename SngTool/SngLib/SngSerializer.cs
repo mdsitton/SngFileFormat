@@ -51,7 +51,7 @@ namespace SngLib
         /// An optimized Masking routine using Vector<byte> objects along with some pre-computation
         /// This is about 5-10x faster than the standard implementation on coreclr, in unity/mono it's slower
         /// </summary>
-        private static void MaskData(NativeMemoryArray<byte> dataIn, NativeMemoryArray<byte> dataOut, byte[] seed)
+        private static void MaskData(NativeByteArray dataIn, NativeByteArray dataOut, byte[] seed)
         {
             if (dataIndexVectors == null)
             {
@@ -155,7 +155,7 @@ namespace SngLib
                 if (fs.Position != (long)pos)
                     fs.Seek((long)pos, SeekOrigin.Begin);
 
-                var contents = new NativeMemoryArray<byte>((long)size, skipZeroClear: true);
+                var contents = new NativeByteArray((long)size, skipZeroClear: true);
                 fs.ReadToNativeArray(contents);
 
                 // Unmask data
@@ -168,7 +168,7 @@ namespace SngLib
             return sngFile;
         }
 
-        private static ulong CountNonNullFiles(IEnumerable<NativeMemoryArray<byte>?> data)
+        private static ulong CountNonNullFiles(IEnumerable<NativeByteArray?> data)
         {
             ulong count = 0;
             foreach (var item in data)
@@ -223,7 +223,7 @@ namespace SngLib
             long fileIndexLength = 0;
             long fileSectionLength = 0;
             fileIndexLength += sizeof(ulong); // File count
-            foreach ((string key, NativeMemoryArray<byte>? value) in sngFile.Files)
+            foreach ((string key, NativeByteArray? value) in sngFile.Files)
             {
                 if (value == null)
                     continue;
@@ -270,7 +270,7 @@ namespace SngLib
             bytesOut.WriteUInt64LE(ref pos, (ulong)fileIndexSize);
             bytesOut.WriteUInt64LE(ref pos, (ulong)CountNonNullFiles(sngFile.Files.Values));
             ulong fileOffset = startOfFileIndex;
-            foreach ((string key, NativeMemoryArray<byte>? value) in sngFile.Files)
+            foreach ((string key, NativeByteArray? value) in sngFile.Files)
             {
                 if (value == null)
                     continue; ;

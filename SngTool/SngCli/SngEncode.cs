@@ -238,7 +238,7 @@ namespace SngCli
 
                 Random.Shared.NextBytes(sngFile.XorMask);
 
-                (string name, NativeMemoryArray<byte>? data) fileData = ("", null);
+                (string name, NativeByteArray? data) fileData = ("", null);
 
                 var fileList = Directory.GetFiles(songFolder);
 

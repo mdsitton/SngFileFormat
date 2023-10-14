@@ -14,9 +14,9 @@ namespace SongLib
     {
         public static bool verbose = false;
 
-        public static async Task<(string filename, NativeMemoryArray<byte>? data)> ToOpus(string filePath, int bitRate)
+        public static async Task<(string filename, NativeByteArray? data)> ToOpus(string filePath, int bitRate)
         {
-            (string filename, NativeMemoryArray<byte>? data) outData;
+            (string filename, NativeByteArray? data) outData;
 
             // opusenc doesn't support loading mp3 or ogg vorbis
             if (filePath.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase))
@@ -43,7 +43,7 @@ namespace SongLib
         /// <summary>
         /// Decode OGG/Vorbis file and convert into an opus file
         /// </summary>
-        private static async Task<(string filename, NativeMemoryArray<byte>? data)> EncodeVorbisToOpus(string filePath, int bitRate)
+        private static async Task<(string filename, NativeByteArray? data)> EncodeVorbisToOpus(string filePath, int bitRate)
         {
 
             using (var fs = File.OpenRead(filePath))
@@ -89,7 +89,7 @@ namespace SongLib
         /// <summary>
         /// Decode mp3 file and convert into a wav file
         /// </summary>
-        private static async Task<(string filename, NativeMemoryArray<byte>? data)> EncodeMp3ToOpus(string filePath, int bitRate)
+        private static async Task<(string filename, NativeByteArray? data)> EncodeMp3ToOpus(string filePath, int bitRate)
         {
             using (var fs = File.OpenRead(filePath))
             using (var bs = new BufferedStream(fs))
@@ -122,7 +122,7 @@ namespace SongLib
             }
         }
 
-        private async static Task<NativeMemoryArray<byte>?> RunAudioProcess(string processName, string arguments, MemoryMappedFile? file = null, bool debug = false)
+        private async static Task<NativeByteArray?> RunAudioProcess(string processName, string arguments, MemoryMappedFile? file = null, bool debug = false)
         {
             ProcessStartInfo info = new ProcessStartInfo
             {
@@ -150,7 +150,7 @@ namespace SongLib
 
                 // Start with a 16mb buffer which should be able to handle the vast majority of cases
                 // if it needs to be resized it will be automatically grown as-needed
-                NativeMemoryArray<byte> outputData = new NativeMemoryArray<byte>(skipZeroClear: true);
+                NativeByteArray outputData = new NativeByteArray(skipZeroClear: true);
 
                 bool copyError = false;
 
@@ -229,7 +229,7 @@ namespace SongLib
         /// <summary>
         /// Encode opus file from <see cref="PcmFileWriter">
         /// </summary>
-        private async static Task<NativeMemoryArray<byte>?> EncodePcmToOpus(PcmFileWriter file, int bitRate)
+        private async static Task<NativeByteArray?> EncodePcmToOpus(PcmFileWriter file, int bitRate)
         {
             var args = $"--vbr --framesize 60 --bitrate {bitRate} --discard-pictures --discard-comments --raw --raw-bits {PcmFileWriter.BitsPerSample} --raw-rate {file.SampleRate} --raw-chan {file.Channels} - -";
             return await RunAudioProcess("opusenc", args, file.mappedFile, verbose);
@@ -238,7 +238,7 @@ namespace SongLib
         /// <summary>
         /// Encode opus file from byte array
         /// </summary>
-        private async static Task<(string filename, NativeMemoryArray<byte>? data)> EncodeFileToOpus(string filePath, MemoryMappedFile inputData, int bitRate)
+        private async static Task<(string filename, NativeByteArray? data)> EncodeFileToOpus(string filePath, MemoryMappedFile inputData, int bitRate)
         {
             var args = $"--vbr --framesize 60 --bitrate {bitRate} --discard-pictures --discard-comments - -";
             var encodeData = await RunAudioProcess("opusenc", args, inputData, verbose);
@@ -259,7 +259,7 @@ namespace SongLib
         /// <summary>
         /// Encode opus file from path
         /// </summary>
-        private async static Task<(string filename, NativeMemoryArray<byte>? data)> EncodeFileToOpus(string filePath, int bitRate)
+        private async static Task<(string filename, NativeByteArray? data)> EncodeFileToOpus(string filePath, int bitRate)
         {
             using (var mmf = MemoryMappedFile.CreateFromFile(filePath))
             {

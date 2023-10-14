@@ -105,11 +105,11 @@ namespace SongLib
         /// <param name="upscale">Enables image rescaling</param>
         /// <param name="size">Resize images to specific sizes or the nearest option lower</param>
         /// <returns>byte array of new image</returns>
-        public async static Task<(string fileName, NativeMemoryArray<byte>?)> EncodeImageToJpeg(string filePath, int quality = 75, bool upscale = false, SizeTiers size = SizeTiers.Size512x512)
+        public async static Task<(string fileName, NativeByteArray?)> EncodeImageToJpeg(string filePath, int quality = 75, bool upscale = false, SizeTiers size = SizeTiers.Size512x512)
         {
             var ms = new MemoryStream();
 
-            var output = new NativeMemoryArray<byte>(skipZeroClear: true);
+            var output = new NativeByteArray(skipZeroClear: true);
 
             try
             {
@@ -129,7 +129,7 @@ namespace SongLib
                         ColorType = JpegEncodingColor.Rgb,
                         SkipMetadata = true
                     };
-                    var jpgStream = output.AsStream();
+                    var jpgStream = output.AsStream(FileAccess.ReadWrite);
                     await image.SaveAsJpegAsync(jpgStream, encoder);
                     output.Resize(jpgStream.Position);
 

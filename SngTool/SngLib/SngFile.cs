@@ -10,9 +10,9 @@ namespace SngLib
         public byte[] XorMask = new byte[16];
 
         public Dictionary<string, string> Metadata = new();
-        public Dictionary<string, NativeMemoryArray<byte>?> Files = new();
+        public Dictionary<string, NativeByteArray?> Files = new();
 
-        public void AddFile(string fileName, NativeMemoryArray<byte>? data)
+        public void AddFile(string fileName, NativeByteArray? data)
         {
             if (Files.TryAdd(fileName, data))
             {
