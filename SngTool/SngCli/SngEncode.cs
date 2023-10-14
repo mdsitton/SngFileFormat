@@ -233,109 +233,112 @@ namespace SngCli
                 ConMan.Out($"Starting: {songFolder}");
             }
 
-            SngFile sngFile = new SngFile();
-            Random.Shared.NextBytes(sngFile.XorMask);
-
-            (string name, NativeMemoryArray<byte>? data) fileData = ("", null);
-
-            var fileList = Directory.GetFiles(songFolder);
-
-            long startingSize = 0;
-            long endSize = 0;
-            foreach (var file in fileList)
+            using (SngFile sngFile = new SngFile())
             {
-                FileInfo fileInfo = new FileInfo(file);
-                startingSize += fileInfo.Length;
-                var fileName = Path.GetFileName(file);
-                if (audioRegex.IsMatch(file))
-                {
-                    foreach (var audioName in supportedAudioNames)
-                    {
-                        if (fileName.StartsWith(audioName, StringComparison.OrdinalIgnoreCase) || !conf.SkipUnknown)
-                        {
-                            if (conf.OpusEncode && !fileName.EndsWith(".opus", StringComparison.OrdinalIgnoreCase))
-                            {
-                                fileData = await AudioEncoding.ToOpus(file, conf.OpusBitrate);
-                            }
-                            else
-                            {
-                                fileData = (fileName, await LargeFile.ReadAllBytesAsync(file));
-                            }
-                            break;
-                        }
-                    }
-                }
-                else if (string.Equals(fileName, "song.ini", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (!ParseMetadata(sngFile, file))
-                    {
-                        ConMan.Out($"Error: Failed to parse metadata for chart {songFolder}");
-                        return;
-                    }
-                    continue;
-                }
-                else if (string.Equals(fileName, "notes.mid", StringComparison.OrdinalIgnoreCase))
-                {
-                    fileData = ("notes.mid", await LargeFile.ReadAllBytesAsync(file));
-                }
-                else if (string.Equals(fileName, "notes.chart", StringComparison.OrdinalIgnoreCase))
-                {
-                    fileData = ("notes.chart", await LargeFile.ReadAllBytesAsync(file));
-                }
-                else if (imageRegex.IsMatch(file))
-                {
-                    if (fileName.StartsWith("album", StringComparison.OrdinalIgnoreCase))
-                    {
-                        if (conf.JpegEncode)
-                        {
-                            fileData = await JpegEncoding.EncodeImageToJpeg(file, conf.JpegQuality, conf.AlbumUpscale, conf.AlbumSize);
-                        }
-                        else
-                        {
 
-                            fileData = (fileName, await LargeFile.ReadAllBytesAsync(file));
-                        }
-                    }
-                    else
+                Random.Shared.NextBytes(sngFile.XorMask);
+
+                (string name, NativeMemoryArray<byte>? data) fileData = ("", null);
+
+                var fileList = Directory.GetFiles(songFolder);
+
+                long startingSize = 0;
+                long endSize = 0;
+                foreach (var file in fileList)
+                {
+                    FileInfo fileInfo = new FileInfo(file);
+                    startingSize += fileInfo.Length;
+                    var fileName = Path.GetFileName(file);
+                    if (audioRegex.IsMatch(file))
                     {
-                        foreach (var imageName in supportedImageNames)
+                        foreach (var audioName in supportedAudioNames)
                         {
-                            if (fileName.StartsWith(imageName, StringComparison.OrdinalIgnoreCase) || !conf.SkipUnknown)
+                            if (fileName.StartsWith(audioName, StringComparison.OrdinalIgnoreCase) || !conf.SkipUnknown)
                             {
-                                if (conf.JpegEncode)
+                                if (conf.OpusEncode && !fileName.EndsWith(".opus", StringComparison.OrdinalIgnoreCase))
                                 {
-                                    fileData = await JpegEncoding.EncodeImageToJpeg(file, conf.JpegQuality, false, JpegEncoding.SizeTiers.None);
+                                    fileData = await AudioEncoding.ToOpus(file, conf.OpusBitrate);
                                 }
                                 else
                                 {
-
                                     fileData = (fileName, await LargeFile.ReadAllBytesAsync(file));
                                 }
                                 break;
                             }
                         }
+                    }
+                    else if (string.Equals(fileName, "song.ini", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (!ParseMetadata(sngFile, file))
+                        {
+                            ConMan.Out($"Error: Failed to parse metadata for chart {songFolder}");
+                            return;
+                        }
+                        continue;
+                    }
+                    else if (string.Equals(fileName, "notes.mid", StringComparison.OrdinalIgnoreCase))
+                    {
+                        fileData = ("notes.mid", await LargeFile.ReadAllBytesAsync(file));
+                    }
+                    else if (string.Equals(fileName, "notes.chart", StringComparison.OrdinalIgnoreCase))
+                    {
+                        fileData = ("notes.chart", await LargeFile.ReadAllBytesAsync(file));
+                    }
+                    else if (imageRegex.IsMatch(file))
+                    {
+                        if (fileName.StartsWith("album", StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (conf.JpegEncode)
+                            {
+                                fileData = await JpegEncoding.EncodeImageToJpeg(file, conf.JpegQuality, conf.AlbumUpscale, conf.AlbumSize);
+                            }
+                            else
+                            {
 
+                                fileData = (fileName, await LargeFile.ReadAllBytesAsync(file));
+                            }
+                        }
+                        else
+                        {
+                            foreach (var imageName in supportedImageNames)
+                            {
+                                if (fileName.StartsWith(imageName, StringComparison.OrdinalIgnoreCase) || !conf.SkipUnknown)
+                                {
+                                    if (conf.JpegEncode)
+                                    {
+                                        fileData = await JpegEncoding.EncodeImageToJpeg(file, conf.JpegQuality, false, JpegEncoding.SizeTiers.None);
+                                    }
+                                    else
+                                    {
+
+                                        fileData = (fileName, await LargeFile.ReadAllBytesAsync(file));
+                                    }
+                                    break;
+                                }
+                            }
+
+                        }
+                    }
+                    else if (!conf.VideoExclude && videoRegex.IsMatch(file) && fileName.StartsWith("video", StringComparison.OrdinalIgnoreCase))
+                    {
+                        fileData = (fileName, await LargeFile.ReadAllBytesAsync(file));
+                    }
+                    else if (!conf.SkipUnknown) // Include other unknown files
+                    {
+
+                        fileData = (fileName, await LargeFile.ReadAllBytesAsync(file));
+                    }
+
+                    if (fileData.data != null)
+                    {
+                        endSize += fileData.data.Length;
+                        sngFile.AddFile(fileData.name.ToLowerInvariant(), fileData.data);
                     }
                 }
-                else if (!conf.VideoExclude && videoRegex.IsMatch(file) && fileName.StartsWith("video", StringComparison.OrdinalIgnoreCase))
-                {
-                    fileData = (fileName, await LargeFile.ReadAllBytesAsync(file));
-                }
-                else if (!conf.SkipUnknown) // Include other unknown files
-                {
-
-                    fileData = (fileName, await LargeFile.ReadAllBytesAsync(file));
-                }
-
-                if (fileData.data != null)
-                {
-                    endSize += fileData.data.Length;
-                    sngFile.AddFile(fileData.name.ToLowerInvariant(), fileData.data);
-                }
+                ConMan.Out($"{fullPath} Saving compression ratio: {startingSize / (double)endSize:0.00}x");
+                SngSerializer.SaveSngFile(sngFile, fullPath);
+                Interlocked.Increment(ref completedSongs);
             }
-            ConMan.Out($"{fullPath} Saving compression ratio: {startingSize / (double)endSize:0.00}x");
-            SngSerializer.SaveSngFile(sngFile, fullPath);
-            Interlocked.Increment(ref completedSongs);
         }
 
         private static int completedSongs;

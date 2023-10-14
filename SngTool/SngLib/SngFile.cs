@@ -3,7 +3,7 @@ using Cysharp.Collections;
 
 namespace SngLib
 {
-    public class SngFile
+    public class SngFile : IDisposable
     {
         public const uint CurrentVersion = 1;
         public uint Version = CurrentVersion;
@@ -159,5 +159,12 @@ namespace SngLib
             return new Dictionary<string, string>(Metadata);
         }
 
+        public void Dispose()
+        {
+            foreach (var file in Files)
+            {
+                file.Value?.Dispose();
+            }
+        }
     }
 }
