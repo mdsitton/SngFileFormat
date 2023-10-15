@@ -63,7 +63,7 @@ namespace SngCli
             Console.WriteLine("                                2048x2048");
             Console.WriteLine("\ndecode: ");
             Console.WriteLine("  -o, --out FOLDER      Specify output folder location for extracted song folders");
-            Console.WriteLine("  -i, --input FOLDER    Specify input folder to search for SNG files");
+            Console.WriteLine("  -i, --in FOLDER    Specify input folder to search for SNG files");
             Console.WriteLine("  -t, --threads         Set how many songs will be encoded in parallel.");
             Console.WriteLine("      --noStatusBar     Disable rendering of the status bar. Can reduce cpu usage.");
         }
