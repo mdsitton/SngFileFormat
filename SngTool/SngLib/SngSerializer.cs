@@ -47,36 +47,46 @@ namespace SngLib
             }
         }
 
+        private static void DoMaskData(Span<byte> data)
+        {
+            int vecSize = Vector<byte>.Count;
+            int vecCount = data.Length / vecSize;
+            int lastByteIndex = vecCount * vecSize;
+            var lookupSizeMask = (loopLookup.Length / vecSize) - 1;
+
+            for (int vectorIndex = 0; vectorIndex < vecCount; ++vectorIndex)
+            {
+                int byteIndex = vectorIndex * vecSize;
+                Vector<byte> dataVector = new Vector<byte>(data.Slice(byteIndex));
+
+                Vector<byte> maskedData = dataVector ^ dataIndexVectors![vectorIndex & lookupSizeMask];
+                maskedData.CopyTo(data.Slice(byteIndex));
+            }
+
+            // Handle the remaining bytes
+            for (int i = lastByteIndex; i < data.Length; i++)
+            {
+                data[i] = (byte)(data[i] ^ loopLookup[i & 0xFF]);
+            }
+        }
+
         /// <summary>
         /// An optimized Masking routine using Vector<byte> objects along with some pre-computation
         /// This is about 5-10x faster than the standard implementation on coreclr, in unity/mono it's slower
         /// </summary>
-        private static void MaskData(NativeByteArray dataIn, NativeByteArray dataOut, byte[] seed)
+        private static void MaskData(NativeByteArray data, byte[] seed)
         {
             if (dataIndexVectors == null)
             {
                 // Precompute the lookup table for xormask
                 InitializeDataIndexVectors(seed);
             }
-            int vecSize = Vector<byte>.Count;
-            long vecCount = dataIn.Length / vecSize;
-            long lastByteIndex = vecCount * vecSize;
-            var lookupSizeMask = (loopLookup.Length / vecSize) - 1;
 
-            for (long vectorIndex = 0; vectorIndex < vecCount; ++vectorIndex)
+            foreach (var segment in data.AsMemoryList())
             {
-                long byteIndex = vectorIndex * vecSize;
-                Vector<byte> dataVector = new Vector<byte>(dataOut.AsSpan(byteIndex));
-
-                Vector<byte> maskedData = dataVector ^ dataIndexVectors![vectorIndex & lookupSizeMask];
-                maskedData.CopyTo(dataOut.AsSpan(byteIndex));
+                DoMaskData(segment.Span);
             }
 
-            // Handle the remaining bytes
-            for (long i = lastByteIndex; i < dataIn.Length; i++)
-            {
-                dataOut[i] = (byte)(dataIn[i] ^ loopLookup[i & 0xFF]);
-            }
         }
 
         public static SngFile LoadSngFile(string path)
@@ -159,7 +169,7 @@ namespace SngLib
                 fs.ReadToNativeArray(contents);
 
                 // Unmask data
-                MaskData(contents, contents, sngFile.XorMask);
+                MaskData(contents, sngFile.XorMask);
 
                 sngFile.AddFile(name, contents);
             }
@@ -325,7 +335,7 @@ namespace SngLib
                         continue;
 
                     var contents = fileEntry.Value;
-                    MaskData(contents, contents, sngFile.XorMask);
+                    MaskData(contents, sngFile.XorMask);
 
                     fs.WriteFromNativeArray(contents);
                 }
