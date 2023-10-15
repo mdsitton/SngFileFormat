@@ -40,6 +40,131 @@ namespace SngCli
             return hasMidiOrChart && hasAudioFile && hasSongIni;
         }
 
+        public static void ReadFeedbackChartMetadata(SngFile sngFile, string chartPath)
+        {
+            using (Stream stream = File.Open(chartPath, FileMode.Open))
+            {
+                using (var reader = new StreamReader(stream))
+                {
+                    while (!reader.EndOfStream)
+                    {
+                        string? lineFull = reader.ReadLine();
+
+                        if (lineFull == null)
+                        {
+                            break;
+                        }
+                        ReadOnlySpan<char> trimString = lineFull;
+                        trimString = trimString.Trim();
+
+                        // quit reading once we hit the end of the first .chart section
+                        if (trimString.EndsWith("}"))
+                            break;
+
+                        var sepPos = trimString.IndexOf("=");
+
+                        // Skip any lines that don't have a key value pair
+                        if (sepPos == -1)
+                        {
+                            continue;
+                        }
+
+                        // parse key
+                        var keySpan = trimString.Slice(0, sepPos).Trim();
+
+                        // Parse value
+                        var valueSpan = trimString.Slice(sepPos + 1).Trim();
+                        int quotePosStart = valueSpan.IndexOf("\"");
+
+                        // Remove any quotes around values
+                        // CH removes any quotes within the value, however i've
+                        // opted to only remove the outer set of quotes if they
+                        // exist, any quotes within are not touched.
+                        if (quotePosStart != -1)
+                        {
+                            int quotePosEnd = valueSpan.LastIndexOf("\"");
+
+                            // We only have a single quote in this string
+                            // some older malformed charts do have this unfortunately
+                            if (quotePosStart == quotePosEnd)
+                            {
+                                if (quotePosStart == 0)
+                                {
+                                    // remove the first character
+                                    valueSpan = valueSpan.Slice(1);
+                                }
+                                else if (quotePosStart == (valueSpan.Length - 1))
+                                {
+                                    // remove the last character
+                                    valueSpan = valueSpan.Slice(0, valueSpan.Length - 1);
+                                }
+                            }
+                            // This means we should have atleast 2 different quotes
+                            else
+                            {
+                                // only remove the first and last quote don't touch others
+                                if (quotePosStart == 0)
+                                {
+                                    // remove the first character
+                                    valueSpan = valueSpan.Slice(1);
+                                    quotePosEnd--; // offset end position
+                                }
+
+                                if (quotePosEnd == (valueSpan.Length - 1))
+                                {
+                                    // remove the last character
+                                    valueSpan = valueSpan.Slice(0, valueSpan.Length - 1);
+                                }
+                            }
+                        }
+
+                        valueSpan = valueSpan.Trim();
+
+                        // skip any empty keys
+                        if (valueSpan.IsEmpty || valueSpan.IsWhiteSpace())
+                        {
+                            continue;
+                        }
+
+                        switch (keySpan)
+                        {
+                            case "Name":
+                                sngFile.SetString("name", valueSpan.ToString());
+                                break;
+                            case "Artist":
+                                sngFile.SetString("artist", valueSpan.ToString());
+                                break;
+                            case "Genre":
+                                sngFile.SetString("genre", valueSpan.ToString());
+                                break;
+                            case "Charter":
+                                sngFile.SetString("charter", valueSpan.ToString());
+                                break;
+                            case "Year":
+                                // Some older charts have a comma in front of the year
+                                // to make songs look nicer in GH3 but we want to remove
+                                // this for most modern games
+                                if (valueSpan.StartsWith(", "))
+                                {
+                                    valueSpan = valueSpan.Slice(2);
+                                }
+                                sngFile.SetString("year", valueSpan.ToString());
+                                break;
+                            case "Album":
+                                sngFile.SetString("album", valueSpan.ToString());
+                                break;
+                            case "Offset":
+                                sngFile.SetInt("delay", (int)Math.Ceiling(float.Parse(valueSpan) * 1000));
+                                break;
+                            case "PreviewStart":
+                                sngFile.SetInt("preview_start_time", (int)Math.Ceiling(float.Parse(valueSpan) * 1000));
+                                break;
+                        }
+                    }
+                }
+            }
+        }
+
         private static bool ParseMetadata(SngFile sngFile, string iniPath)
         {
             // Manually parse the types of known keys so that we know they are correct
@@ -241,6 +366,7 @@ namespace SngCli
                 (string name, NativeByteArray? data) fileData = ("", null);
 
                 var fileList = Directory.GetFiles(songFolder);
+                bool hasIniFile = fileList.Contains("song.ini");
 
                 long startingSize = 0;
                 long endSize = 0;
@@ -282,6 +408,10 @@ namespace SngCli
                     }
                     else if (string.Equals(fileName, "notes.chart", StringComparison.OrdinalIgnoreCase))
                     {
+                        if (!hasIniFile)
+                        {
+                            ReadFeedbackChartMetadata(sngFile, file);
+                        }
                         fileData = ("notes.chart", await LargeFile.ReadAllBytesAsync(file));
                     }
                     else if (imageRegex.IsMatch(file))
