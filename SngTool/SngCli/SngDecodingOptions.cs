@@ -26,12 +26,14 @@ namespace SngCli
             {
                 Console.WriteLine("Input folder argument not found:");
                 Program.DisplayHelp();
+                Environment.Exit(1);
                 return;
             }
             if (!(args.TryGetValue("out", out OutputPath) || args.TryGetValue("o", out OutputPath)))
             {
                 Console.WriteLine("Output folder argument not found:");
                 Program.DisplayHelp();
+                Environment.Exit(1);
                 return;
             }
 
