@@ -12,7 +12,7 @@ namespace SngCli
         public string? OutputPath;
 
         // Program options
-        public bool NoThreads;
+        public short Threads;
         public bool VideoExclude;
         public bool SkipUnknown;
         public bool SkipExisting;
@@ -93,12 +93,17 @@ namespace SngCli
                 return;
             }
 
+            string? count;
+            if (!((args.TryGetValue("threads", out count) || args.TryGetValue("t", out count)) && short.TryParse(count, out Threads)))
+            {
+                Threads = -1;
+            }
+
             // Bool flags we just need to make sure the keys exist
             VideoExclude = args.TryGetValue("videoExclude", out _);
             OpusEncode = args.TryGetValue("opusEncode", out _);
             JpegEncode = args.TryGetValue("jpegEncode", out _);
             AlbumUpscale = args.TryGetValue("albumUpscale", out _);
-            NoThreads = args.TryGetValue("noThreads", out _);
             SkipUnknown = args.TryGetValue("skipUnknown", out _);
             SkipExisting = args.TryGetValue("skipExisting", out _);
 

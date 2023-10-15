@@ -16,10 +16,10 @@ Options:
 
 encode:
   -o, --out FOLDER      Specify output folder location for SNG files
-  -i, --input FOLDER    Specify input folder to search for song folders
+  -i, --in FOLDER       Specify input folder to search for song folders
+  -t, --threads         Set how many songs will be encoded in parallel. Can also be useful to set to 1 when a song has an error along with --verbose.
       --skipExisting    If the song to be encoded already exists as an sng in the output folder skip it
       --skipUnknown     Skip unknown files.By default unknown files are included (All audio and images of supported formats are transcoded)
-      --noThreads       Disable threading only process one song at a time. Can also be useful when a song has an error along with --verbose.
       --videoExclude    Exclude video files
       --opusEncode      Encode all audio to opus
       --opusBitrate     Set opus encoder bitrate, default: 128
@@ -40,7 +40,7 @@ encode:
 decode:
   -o, --out FOLDER      Specify output folder location for extracted song folders
   -i, --input FOLDER    Specify input folder to search for SNG files
-      --noThreads       Disable threading only process one song at a time.
+  -t, --threads         Set how many songs will be encoded in parallel.
 ```
 
 When encoding this tool can also do audio transcoding to opus, and image transcoding to JPEG. Opus encoding takes a significant amount of time for larger song libraries. The more cpu cores you have, the tool can take advantage of this, and encode multiple songs in parallel speeding up the process significantly.

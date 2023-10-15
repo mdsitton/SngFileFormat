@@ -132,7 +132,6 @@ namespace SngCli
 
         private static void DrawProgressBar()
         {
-
             if (!progressActive)
             {
                 return;
@@ -140,7 +139,6 @@ namespace SngCli
 
             var original = Console.GetCursorPosition();
             Console.CursorTop = Console.WindowTop + Console.WindowHeight - 1;
-
 
             float percent = (float)progress / ProgressItems;
 

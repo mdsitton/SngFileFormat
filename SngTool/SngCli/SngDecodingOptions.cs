@@ -15,7 +15,7 @@ namespace SngCli
         public string? InputPath;
         public string? OutputPath;
 
-        public bool NoThreads;
+        public short Threads;
 
         public SngDecodingOptions(Dictionary<string, string> args)
         {
@@ -34,8 +34,11 @@ namespace SngCli
                 return;
             }
 
-            // Bool flags we just need to make sure the keys exist
-            NoThreads = args.TryGetValue("noThreads", out _);
+            string? count;
+            if (!((args.TryGetValue("threads", out count) || args.TryGetValue("t", out count)) && short.TryParse(count, out Threads)))
+            {
+                Threads = -1;
+            }
         }
     }
 }
