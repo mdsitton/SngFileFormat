@@ -93,9 +93,9 @@ namespace SongLib
         {
             using (var fs = File.OpenRead(filePath))
             using (var bs = new BufferedStream(fs))
-            using (var mp3 = new MpegFile(bs, true))
+            using (MpegFile mp3 = new MpegFile(bs, true))
             {
-                var totalSamples = mp3.Length.Value;
+                var totalSamples = mp3.Length!.Value;
 
                 var fileSize = PcmFileWriter.CalculateSizeEstimate(totalSamples);
 
