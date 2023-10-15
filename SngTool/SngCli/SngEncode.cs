@@ -510,12 +510,19 @@ namespace SngCli
             ConMan.Out("SngCli scanning song folders");
             // ConMan.ProgramCanceledAction += OutputReport;
 
+            List<string> songFolders = SearchForFolders(conf.InputPath!);
+
+            if (songFolders.Count == 0)
+            {
+                ConMan.Out($"No valid songs found at: {conf.InputPath!}");
+                Environment.Exit(1);
+                return;
+            }
+
             if (conf.StatusBar)
             {
                 ConMan.EnableProgress(1);
             }
-
-            List<string> songFolders = SearchForFolders(conf.InputPath!);
 
             ConMan.ProgressItems = songFolders.Count;
             ConMan.Out($"Song count: {songFolders.Count}");
