@@ -166,7 +166,7 @@ namespace SngLib
                     fs.Seek((long)pos, SeekOrigin.Begin);
 
                 var contents = new NativeByteArray((long)size, skipZeroClear: true);
-                fs.ReadToNativeArray(contents, (int)size);
+                fs.ReadToNativeArray(contents, (long)size);
 
                 // Unmask data
                 MaskData(contents, sngFile.XorMask);
