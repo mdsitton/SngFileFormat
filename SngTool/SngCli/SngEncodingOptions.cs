@@ -80,14 +80,14 @@ namespace SngCli
         {
             _instance = this;
             // Validate command line arguments
-            if (!args.TryGetValue("in", out InputPath) || (InputPath == null && !args.TryGetValue("i", out InputPath)))
+            if (!(args.TryGetValue("in", out InputPath) || args.TryGetValue("i", out InputPath)))
             {
                 Console.WriteLine("Input folder argument not found:");
                 Program.DisplayHelp();
                 Environment.Exit(1);
                 return;
             }
-            if (!args.TryGetValue("out", out OutputPath) || (OutputPath == null && !args.TryGetValue("o", out OutputPath)))
+            if (!(args.TryGetValue("out", out OutputPath) || args.TryGetValue("o", out OutputPath)))
             {
                 Console.WriteLine("Output folder argument not found:");
                 Program.DisplayHelp();
