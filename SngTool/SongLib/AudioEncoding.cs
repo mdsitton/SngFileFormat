@@ -83,7 +83,7 @@ namespace SongLib
             {
                 return $"{name}.exe";
             }
-            return "lame";
+            return name;
         }
 
         /// <summary>
