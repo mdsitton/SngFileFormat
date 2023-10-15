@@ -118,7 +118,7 @@ namespace SngCli
                 sngFile.SetString("playlist", topLevelPlaylist);
                 sngFile.SetString("sub_playlist", subPlaylist);
                 sngFile.SetInt("album_track", albumTrack);
-                sngFile.SetString("album_track", charter);
+                sngFile.SetString("charter", charter);
                 sngFile.SetInt("hopo_frequency", customHOPO);
                 sngFile.SetBool("eighthnote_hopo", isEighthHOPO);
                 sngFile.SetInt("multiplier_note", multiplierNote);
