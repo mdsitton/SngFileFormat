@@ -319,13 +319,20 @@ namespace SngCli
 
                         }
                     }
-                    else if (!conf.VideoExclude && videoRegex.IsMatch(file) && fileName.StartsWith("video", StringComparison.OrdinalIgnoreCase))
+                    else if (videoRegex.IsMatch(file) && fileName.StartsWith("video", StringComparison.OrdinalIgnoreCase))
                     {
+                        if (conf.VideoExclude)
+                        {
+                            continue;
+                        }
                         fileData = (fileName, await LargeFile.ReadAllBytesAsync(file));
                     }
-                    else if (!conf.SkipUnknown) // Include other unknown files
+                    else // Include other unknown files
                     {
-
+                        if (conf.SkipUnknown)
+                        {
+                            continue;
+                        }
                         fileData = (fileName, await LargeFile.ReadAllBytesAsync(file));
                     }
 
