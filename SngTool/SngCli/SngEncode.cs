@@ -373,7 +373,11 @@ namespace SngCli
             ConMan.Out("SngCli scanning song folders");
             // ConMan.ProgramCanceledAction += OutputReport;
 
-            ConMan.EnableProgress(1);
+            if (conf.StatusBar)
+            {
+                ConMan.EnableProgress(1);
+            }
+
             List<string> songFolders = SearchForFolders(conf.InputPath!);
 
             ConMan.ProgressItems = songFolders.Count;
@@ -390,8 +394,12 @@ namespace SngCli
                     Interlocked.Increment(ref erroredSongs);
                 }
                 ConMan.UpdateProgress(Interlocked.Increment(ref processedSongs));
-            }, conf.NoThreads ? 1 : -1);
-            ConMan.DisableProgress();
+            }, conf.Threads);
+
+            if (conf.StatusBar)
+            {
+                ConMan.DisableProgress();
+            }
             OutputReport();
         }
     }

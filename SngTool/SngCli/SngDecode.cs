@@ -182,7 +182,10 @@ namespace SngCli
                 return;
             }
 
-            ConMan.EnableProgress(1);
+            if (conf.StatusBar)
+            {
+                ConMan.EnableProgress(1);
+            }
             var songs = FindAllSngFiles(conf.InputPath!);
             ConMan.ProgressItems = songs.Length;
 
@@ -195,16 +198,15 @@ namespace SngCli
                 }
                 catch (Exception e)
                 {
-                    // Con.DisableProgress();
-                    // Console.WriteLine(sngFile);
-                    // Console.WriteLine(e);
-                    // Environment.Exit(1);
                     ConMan.Out($"{sngFile} ERROR! \n{e}");
                     erroredSongs++;
                 }
-            }, conf.NoThreads ? 1 : -1);
+            }, conf.Threads);
 
-            ConMan.DisableProgress();
+            if (conf.StatusBar)
+            {
+                ConMan.DisableProgress();
+            }
 
             Console.WriteLine($"Extracted Songs: {completedSongs}");
             Console.WriteLine($"Errored Songs: {erroredSongs}");

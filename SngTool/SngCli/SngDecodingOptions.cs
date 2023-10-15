@@ -16,6 +16,7 @@ namespace SngCli
         public string? OutputPath;
 
         public short Threads;
+        public bool StatusBar;
 
         public SngDecodingOptions(Dictionary<string, string> args)
         {
@@ -39,6 +40,9 @@ namespace SngCli
             {
                 Threads = -1;
             }
+
+
+            StatusBar = !args.TryGetValue("noStatusBar", out _);
         }
     }
 }

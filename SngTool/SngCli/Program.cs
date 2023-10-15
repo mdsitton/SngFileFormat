@@ -26,7 +26,8 @@ namespace SngCli
             "albumUpscale",
             "albumResize",
             "skipUnknown",
-            "skipExisting"
+            "skipExisting",
+            "noStatusBar"
         };
 
         public static void DisplayHelp()
@@ -41,6 +42,7 @@ namespace SngCli
             Console.WriteLine("  -o, --out FOLDER      Specify output folder location for SNG files");
             Console.WriteLine("  -i, --in FOLDER       Specify input folder to search for song folders");
             Console.WriteLine("  -t, --threads         Set how many songs will be encoded in parallel. Can also be useful to set to 1 when a song has an error along with --verbose.");
+            Console.WriteLine("      --noStatusBar     Disable rendering of the status bar. Can reduce cpu usage.");
             Console.WriteLine("      --skipExisting    If the song to be encoded already exists as an sng in the output folder skip it");
             Console.WriteLine("      --skipUnknown     Skip unknown files.By default unknown files are included (All audio and images of supported formats are transcoded)");
             Console.WriteLine("      --videoExclude    Exclude video files");
@@ -63,6 +65,7 @@ namespace SngCli
             Console.WriteLine("  -o, --out FOLDER      Specify output folder location for extracted song folders");
             Console.WriteLine("  -i, --input FOLDER    Specify input folder to search for SNG files");
             Console.WriteLine("  -t, --threads         Set how many songs will be encoded in parallel.");
+            Console.WriteLine("      --noStatusBar     Disable rendering of the status bar. Can reduce cpu usage.");
         }
 
         private static Dictionary<string, string>? ProcessArguments(string[] args)
