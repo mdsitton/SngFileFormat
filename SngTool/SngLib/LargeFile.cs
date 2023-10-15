@@ -14,55 +14,41 @@ public static class LargeFile
         }
     }
 
-    public static void ReadToNativeArray(this Stream stream, NativeByteArray arr)
+    public static void ReadToNativeArray(this Stream stream, NativeByteArray arr, long readCount)
     {
+
         var writer = arr.CreateBufferWriter();
 
         long readTotal = 0;
         int read;
 
-        int GetRemainingStreamChunkLength()
+        Span<byte> GetWriteSpan()
         {
-            if (!stream.CanSeek)
+            long remaining = readCount - readTotal;
+
+            if (remaining > int.MaxValue)
             {
-                return 0x1000000; // just request a 16mb chunk if we cannot get a length
+                return writer.GetSpan(int.MaxValue);
+            }
+            else if (remaining > 0)
+            {
+                return writer.GetSpan((int)remaining).Slice((int)remaining);
             }
             else
             {
-                var totalRemaining = stream.Length - readTotal;
-                if (totalRemaining > int.MaxValue)
-                {
-                    return int.MaxValue;
-                }
-                else if (totalRemaining < 0)
-                {
-                    return 0x1000000; // just request a 16mb chunk if we don't have any remaining
-                }
-                else
-                {
-                    return (int)totalRemaining;
-                }
+                return Array.Empty<byte>();
             }
         }
 
-        while ((read = stream.Read(writer.GetSpan(GetRemainingStreamChunkLength()))) != 0)
+        while ((read = stream.Read(GetWriteSpan())) != 0)
         {
             readTotal += read;
             writer.Advance(read);
         }
         // set size to the total number of bytes actually read
         // this won't reallocate the array, 
-        arr.Resize(readTotal);
+        arr.Resize(readCount);
     }
-
-    // public static async Task WriteToAsync(this NativeMemoryArray<byte> buffer, Stream stream, int chunkSize = int.MaxValue, IProgress<int>? progress = null, CancellationToken cancellationToken = default)
-    // {
-    //     foreach (var item in buffer.AsReadOnlyMemoryList(chunkSize))
-    //     {
-    //         await stream.WriteAsync(item, cancellationToken);
-    //         progress?.Report(item.Length);
-    //     }
-    // }
 
     public static void WriteFromNativeArray(this Stream stream, NativeByteArray arr, int chunkSize = int.MaxValue)
     {
