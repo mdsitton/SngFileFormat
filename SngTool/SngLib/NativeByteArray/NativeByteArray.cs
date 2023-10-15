@@ -81,6 +81,19 @@ namespace Cysharp.Collections
             }
         }
 
+        private static long NextPO2(long v)
+        {
+            v--;
+            v |= v >> 1;
+            v |= v >> 2;
+            v |= v >> 4;
+            v |= v >> 8;
+            v |= v >> 16;
+            v |= v >> 32;  // added line to handle 64 bits
+            v++;
+            return v;
+        }
+
         public bool Resize(long newLength)
         {
             if (newLength <= allocatedLength)
@@ -92,6 +105,10 @@ namespace Cysharp.Collections
             {
                 return false;
             }
+            // compute the next power of two here
+            // This vastly reduces the total number of re-allocations
+            // with the drawback of increasing memory usage somewhat
+            newLength = NextPO2(newLength);
             buffer = (byte*)NativeMemory.Realloc(buffer, (nuint)newLength);
 
             allocatedLength = newLength;
