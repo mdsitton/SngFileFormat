@@ -47,26 +47,43 @@ namespace SngLib
             }
         }
 
-        private static void DoMaskData(Span<byte> data)
+        private static void DoMaskData(Span<byte> data, long filePos)
         {
-            int vecSize = Vector<byte>.Count;
-            int vecCount = data.Length / vecSize;
-            int lastByteIndex = vecCount * vecSize;
-            var lookupSizeMask = (loopLookup.Length / vecSize) - 1;
+            int vecElements = Vector<byte>.Count;
+            // Process bytes until we are aligned with the vector size
+            long totalVectorFilePos = (long)Math.Ceiling(filePos / (double)vecElements) * vecElements;
+            int nonAlignedBytes = (int)(totalVectorFilePos - filePos);
 
-            for (int vectorIndex = 0; vectorIndex < vecCount; ++vectorIndex)
+            for (int i = 0; i < nonAlignedBytes; ++i, ++filePos)
             {
-                int byteIndex = vectorIndex * vecSize;
+                data[i] = (byte)(data[i] ^ loopLookup[filePos & 0xFF]);
+            }
+
+            var remainingBytes = data.Length - nonAlignedBytes;
+            int startPos = nonAlignedBytes;
+
+            int vecSegments = remainingBytes / vecElements;
+            int totalVecElements = vecSegments * vecElements;
+
+            int lastByteIndex = totalVecElements + startPos;
+            var lookupSizeMask = (loopLookup.Length / vecElements) - 1;
+
+            long lookupIndex = filePos / vecElements;
+            for (int vectorIndex = 0; vectorIndex < vecSegments; ++vectorIndex, ++lookupIndex)
+            {
+                int byteIndex = (vectorIndex * vecElements) + startPos;
                 Vector<byte> dataVector = new Vector<byte>(data.Slice(byteIndex));
 
-                Vector<byte> maskedData = dataVector ^ dataIndexVectors![vectorIndex & lookupSizeMask];
+                Vector<byte> maskedData = dataVector ^ dataIndexVectors![lookupIndex & lookupSizeMask];
                 maskedData.CopyTo(data.Slice(byteIndex));
             }
 
+            long endOfVecFilePos = filePos + totalVecElements;
+
             // Handle the remaining bytes
-            for (int i = lastByteIndex; i < data.Length; i++)
+            for (int i = lastByteIndex; i < data.Length; ++i, ++endOfVecFilePos)
             {
-                data[i] = (byte)(data[i] ^ loopLookup[i & 0xFF]);
+                data[i] = (byte)(data[i] ^ loopLookup[endOfVecFilePos & 0xFF]);
             }
         }
 
@@ -81,12 +98,13 @@ namespace SngLib
                 // Precompute the lookup table for xormask
                 InitializeDataIndexVectors(seed);
             }
-
+            long filePos = 0;
             foreach (var segment in data.AsMemoryList())
             {
-                DoMaskData(segment.Span);
+                var sp = segment.Span;
+                DoMaskData(sp, filePos);
+                filePos += sp.Length;
             }
-
         }
 
         public static SngFile LoadSngFile(string path)

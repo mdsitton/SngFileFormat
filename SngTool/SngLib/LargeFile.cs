@@ -16,7 +16,6 @@ public static class LargeFile
 
     public static void ReadToNativeArray(this Stream stream, NativeByteArray arr, long readCount)
     {
-
         var writer = arr.CreateBufferWriter();
 
         long readTotal = 0;
@@ -26,18 +25,22 @@ public static class LargeFile
         {
             long remaining = readCount - readTotal;
 
+            Span<byte> spanVal;
+
             if (remaining > int.MaxValue)
             {
-                return writer.GetSpan(int.MaxValue);
+                spanVal = writer.GetSpan(int.MaxValue);
             }
             else if (remaining > 0)
             {
-                return writer.GetSpan((int)remaining).Slice((int)remaining);
+                spanVal = writer.GetSpan((int)remaining).Slice(0, (int)remaining);
             }
             else
             {
-                return Array.Empty<byte>();
+                spanVal = Array.Empty<byte>();
             }
+
+            return spanVal;
         }
 
         while ((read = stream.Read(GetWriteSpan())) != 0)
