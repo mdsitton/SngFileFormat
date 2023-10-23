@@ -19,6 +19,8 @@ namespace SngCli
 
         public bool StatusBar;
 
+        public bool EncodeUnknown;
+
         // JPEG options
         public bool JpegEncode;
         public bool AlbumUpscale;
@@ -109,6 +111,7 @@ namespace SngCli
             SkipUnknown = args.TryGetValue("skipUnknown", out _);
             SkipExisting = args.TryGetValue("skipExisting", out _);
             StatusBar = !args.TryGetValue("noStatusBar", out _);
+            EncodeUnknown = !args.TryGetValue("encodeUnknown", out _);
 
             if (args.TryGetValue("opusBitrate", out string? bitrateStr) && bitrateStr != null)
             {

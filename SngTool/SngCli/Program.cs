@@ -27,7 +27,8 @@ namespace SngCli
             "albumResize",
             "skipUnknown",
             "skipExisting",
-            "noStatusBar"
+            "noStatusBar",
+            "encodeUnknown"
         };
 
         public static void DisplayHelp()
@@ -52,6 +53,7 @@ namespace SngCli
             Console.WriteLine("      --jpegQuality     JPEG encoding quality, default: 75");
             Console.WriteLine("      --albumUpscale    Enable upscaling album art, by default images are only shrunk.");
             Console.WriteLine("      --albumResize     Resize album art to set size. Smaller resolutions load faster in-game, Default size: 512x512");
+            Console.WriteLine("      --encodeUnknown   Re-Encode any unknown files but that may match supported audio/image formats. By default encoding non-game files is disabled.");
             Console.WriteLine("                            Supported Sizes:");
             Console.WriteLine("                                Nearest - This uses next size below the image size");
             Console.WriteLine("                                256x256");

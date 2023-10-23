@@ -9,6 +9,8 @@ namespace SngLib
         public uint Version = CurrentVersion;
         public byte[] XorMask = new byte[16];
 
+        public bool metadataAvailable;
+
         public Dictionary<string, string> Metadata = new();
         public Dictionary<string, NativeByteArray?> Files = new();
 
