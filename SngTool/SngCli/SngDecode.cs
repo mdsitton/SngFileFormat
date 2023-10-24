@@ -161,7 +161,13 @@ namespace SngCli
             // iterate through files and save them to disk
             foreach ((var name, var data) in sngFile.Files)
             {
-                await data!.WriteToFileAsync(Path.Combine(outputFolder, name));
+                var filePath = Path.Combine(outputFolder, Path.Combine(name.Split("/")));
+                var folder = Path.GetDirectoryName(filePath)!;
+                if (!Directory.Exists(folder))
+                {
+                    Directory.CreateDirectory(folder);
+                }
+                await data!.WriteToFileAsync(filePath);
             }
             ConMan.UpdateProgress(Interlocked.Increment(ref completedSongs));
         }
@@ -212,6 +218,5 @@ namespace SngCli
             Console.WriteLine($"Errored Songs: {erroredSongs}");
             Console.WriteLine($"Total Songs Processed: {songs.Length}");
         }
-
     }
 }

@@ -344,6 +344,19 @@ namespace SngCli
             "preview"
         };
 
+        private static readonly string[] excludeFiles =
+        {
+            "desktop.ini",
+            ".DS_Store",
+            "ps.dat",
+            "ch.dat"
+        };
+
+        private static readonly string[] excludeFolders =
+        {
+            "__MACOSX"
+        };
+
         private static bool MatchesNames(string fileName, string[] names)
         {
             ReadOnlySpan<char> spanFile = fileName;
@@ -394,10 +407,68 @@ namespace SngCli
             }
         }
 
-        private static async Task<(long startingSize, long encodedSize)> EncodeFolder(SngFile sngFile, string folder)
+        private static async Task<(long startingSize, long encodedSize)> EncodeSubFolder(SngFile sngFile, string folder, string folderRelativePath)
         {
+
+            string MakeFileName(string fileName)
+            {
+                return $"{folderRelativePath}/{fileName}";
+            }
+
+            var fileList = Directory.GetFiles(folder);
+
             var conf = SngEncodingConfig.Instance;
             (string name, NativeByteArray? data) fileData = ("", null);
+
+            long startingSize = 0;
+            long endSize = 0;
+            foreach (var file in fileList)
+            {
+                FileInfo fileInfo = new FileInfo(file);
+                startingSize += fileInfo.Length;
+                var fileName = Path.GetFileName(file);
+                if (excludeFiles.Contains(file))
+                {
+                    continue;
+                }
+
+                if (audioRegex.IsMatch(file) && !conf.SkipUnknown)
+                {
+                    bool encodeOpus = conf.OpusEncode || conf.EncodeUnknown;
+                    fileData = await EncodeAudio(MakeFileName(fileName), file, encodeOpus);
+                }
+                else if (imageRegex.IsMatch(file) && !conf.SkipUnknown)
+                {
+                    bool encodeJpg = conf.JpegEncode || conf.EncodeUnknown;
+                    fileData = await EncodeImage(MakeFileName(fileName), file, false, JpegEncoding.SizeTiers.None, encodeJpg);
+                }
+                else
+                {
+                    if (conf.SkipUnknown)
+                    {
+                        continue;
+                    }
+                    fileData = (fileName, await LargeFile.ReadAllBytesAsync(file));
+                }
+                if (fileData.data != null)
+                {
+                    endSize += fileData.data.Length;
+                    sngFile.AddFile(fileData.name, fileData.data);
+                }
+            }
+            return (startingSize, endSize);
+        }
+
+        private static async Task<(long startingSize, long encodedSize)> EncodeFolder(SngFile sngFile, string folder)
+        {
+
+            string MakeFileName(string fileName, bool knownFile)
+            {
+                return knownFile ? fileName.ToLowerInvariant() : fileName;
+            }
+            var conf = SngEncodingConfig.Instance;
+            (string name, NativeByteArray? data) fileData = ("", null);
+
 
             var fileList = Directory.GetFiles(folder);
             bool hasIniFile = PathsHasFileName("song.ini", fileList);
@@ -409,10 +480,14 @@ namespace SngCli
                 FileInfo fileInfo = new FileInfo(file);
                 startingSize += fileInfo.Length;
                 var fileName = Path.GetFileName(file);
-                if (audioRegex.IsMatch(file) && (!conf.SkipUnknown || MatchesNames(fileName, supportedAudioNames)))
+                if (audioRegex.IsMatch(file))
                 {
-                    bool encodeOpus = conf.OpusEncode || conf.EncodeUnknown;
-                    fileData = await EncodeAudio(fileName, file, encodeOpus);
+                    var knownAudio = MatchesNames(fileName, supportedAudioNames);
+                    if (!conf.SkipUnknown || knownAudio)
+                    {
+                        bool encodeOpus = conf.OpusEncode || conf.EncodeUnknown;
+                        fileData = await EncodeAudio(MakeFileName(fileName, knownAudio), file, encodeOpus);
+                    }
                 }
                 else if (string.Equals(fileName, "song.ini", StringComparison.OrdinalIgnoreCase))
                 {
@@ -437,14 +512,15 @@ namespace SngCli
                 }
                 else if (imageRegex.IsMatch(file))
                 {
+                    var knownImage = MatchesNames(fileName, supportedImageNames);
                     if (fileName.StartsWith("album", StringComparison.OrdinalIgnoreCase))
                     {
-                        fileData = await EncodeImage(fileName, file, conf.AlbumUpscale, conf.AlbumSize, conf.JpegEncode);
+                        fileData = await EncodeImage(MakeFileName(fileName, true), file, conf.AlbumUpscale, conf.AlbumSize, conf.JpegEncode);
                     }
-                    else if (!conf.SkipUnknown || MatchesNames(fileName, supportedImageNames))
+                    else if (!conf.SkipUnknown)
                     {
                         bool encodeJpg = conf.JpegEncode || conf.EncodeUnknown;
-                        fileData = await EncodeImage(fileName, file, false, JpegEncoding.SizeTiers.None, encodeJpg);
+                        fileData = await EncodeImage(MakeFileName(fileName, knownImage), file, false, JpegEncoding.SizeTiers.None, encodeJpg);
                     }
                 }
                 else if (videoRegex.IsMatch(file) && fileName.StartsWith("video", StringComparison.OrdinalIgnoreCase))
@@ -453,7 +529,7 @@ namespace SngCli
                     {
                         continue;
                     }
-                    fileData = (fileName, await LargeFile.ReadAllBytesAsync(file));
+                    fileData = (MakeFileName(fileName, true), await LargeFile.ReadAllBytesAsync(file));
                 }
                 else // Include other unknown files
                 {
@@ -467,7 +543,7 @@ namespace SngCli
                 if (fileData.data != null)
                 {
                     endSize += fileData.data.Length;
-                    sngFile.AddFile(fileData.name.ToLowerInvariant(), fileData.data);
+                    sngFile.AddFile(fileData.name, fileData.data);
                 }
             }
             return (startingSize, endSize);
@@ -508,9 +584,24 @@ namespace SngCli
                 // encode the top level folder first
                 (long startingSize, long encodedSize) = await EncodeFolder(sngFile, songFolder);
 
+                // TODO - This does not work with nested sub-folders
+                var subfolders = Directory.GetDirectories(songFolder, "*", new EnumerationOptions() { RecurseSubdirectories = true });
 
 
+                foreach (var subfolder in subfolders)
+                {
+                    // Skip any excluded folders
+                    string folderName = Path.GetDirectoryName(songFolder)!;
+                    if (excludeFolders.Contains(folderName))
+                    {
+                        continue;
+                    }
+                    string folderRelativePath = Path.GetRelativePath(songFolder, subfolder).Replace("\\", "/");
 
+                    var fileInfo = await EncodeSubFolder(sngFile, subfolder, folderRelativePath);
+                    startingSize += fileInfo.startingSize;
+                    encodedSize += fileInfo.encodedSize;
+                }
 
                 ConMan.Out($"{fullPath} Saving compression ratio: {startingSize / (double)encodedSize:0.00}x");
                 SngSerializer.SaveSngFile(sngFile, fullPath);

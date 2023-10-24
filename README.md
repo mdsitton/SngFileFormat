@@ -127,12 +127,12 @@ These is the required ordering of each of these components:
 
 
 ### `FileMeta` (contains the file index metadata for each `File` section)
-| Field         | Data Type | Size        | Description                                                                       |
-| ------------- | --------- | ----------- | --------------------------------------------------------------------------------- |
-| filenameLen   | byte      | 1           | The number of bytes in the filename                                               |
-| filename      | string    | filenameLen | The file's name                                                                   |
-| contentsLen   | uint64    | 8           | The number of bytes in the file's contents                                        |
-| contentsIndex | uint64    | 8           | The first byte index from the start of the file of the corresponding file section |
+| Field         | Data Type | Size        | Description                                                                                 |
+| ------------- | --------- | ----------- | ------------------------------------------------------------------------------------------- |
+| filenameLen   | byte      | 1           | The number of bytes in the filename                                                         |
+| filename      | string    | filenameLen | Relative file path within song folder. Folders are denoted by the '/' character following each folder. The filename follows all folders. |
+| contentsLen   | uint64    | 8           | The number of bytes in the file's contents                                                  |
+| contentsIndex | uint64    | 8           | The first byte index from the start of the file of the corresponding file section           |
 
 
 ### `File` (contains the binary contents of a single file)
@@ -267,6 +267,10 @@ Currently there are no SNG specific metadata names registered but all the keys f
 ### Filename Registry
 
 The filename registry serves a similar purpose to the metadata one so that conflicting file names aren't utilized within the format that have different usages.
+
+*note* that currently all registered file names are specified as lowercase, this is intentional. The reference encoding tool will force any files of these names to be lowercase within the output file, however any unknown file names will not be modified.
+
+Additionally filenames can contain folders within the song seperated by the '/' character however currently there are no 'registered' folders as being used in the accepted format. The reference tool does support encoding folders when explicitly enabled.
 
 - `notes.chart`
 - `notes.mid`
