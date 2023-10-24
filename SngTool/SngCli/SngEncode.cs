@@ -448,7 +448,7 @@ namespace SngCli
                     {
                         continue;
                     }
-                    fileData = (fileName, await LargeFile.ReadAllBytesAsync(file));
+                    fileData = (MakeFileName(fileName), await LargeFile.ReadAllBytesAsync(file));
                 }
                 if (fileData.data != null)
                 {
