@@ -111,7 +111,7 @@ namespace SngCli
             SkipUnknown = args.TryGetValue("skipUnknown", out _);
             SkipExisting = args.TryGetValue("skipExisting", out _);
             StatusBar = !args.TryGetValue("noStatusBar", out _);
-            EncodeUnknown = !args.TryGetValue("encodeUnknown", out _);
+            EncodeUnknown = args.TryGetValue("encodeUnknown", out _);
 
             if (args.TryGetValue("opusBitrate", out string? bitrateStr) && bitrateStr != null)
             {
