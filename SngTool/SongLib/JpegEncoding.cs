@@ -107,8 +107,6 @@ namespace SongLib
         /// <returns>byte array of new image</returns>
         public async static Task<(string fileName, NativeByteArray?)> EncodeImageToJpeg(string filePath, int quality = 75, bool upscale = false, SizeTiers size = SizeTiers.Size512x512)
         {
-            var ms = new MemoryStream();
-
             var output = new NativeByteArray(skipZeroClear: true);
 
             try
@@ -133,7 +131,7 @@ namespace SongLib
                     await image.SaveAsJpegAsync(jpgStream, encoder);
                     output.Resize(jpgStream.Position);
 
-                    if (upscale || ms.Length < file.Length)
+                    if (upscale || output.Length < file.Length)
                     {
                         var name = Path.GetFileNameWithoutExtension(filePath);
                         return ($"{name}.jpg", output);
