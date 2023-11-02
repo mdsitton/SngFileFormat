@@ -13,24 +13,48 @@ namespace SngCli
     {
         private static List<string> SearchForFolders(string rootFolder)
         {
-            List<string> validSubfolders = new List<string>();
-            string[] subfolders = Directory.GetDirectories(rootFolder);
+            // Use a hashset when discovering song folders
+            // so that we can easily ensure that even when a folder contains multiple chart files
+            // that the folder will only be added once to the song encoding process
+            HashSet<string> validSongFolders = new HashSet<string>();
 
-            foreach (string subfolder in subfolders)
+            try
             {
-                if (IsValidSubfolder(subfolder))
+                DirectoryInfo path = new DirectoryInfo(rootFolder);
+
+                if (!path.Exists)
                 {
-                    validSubfolders.Add(subfolder);
-                    continue;
+                    Console.WriteLine($"SongPath {rootFolder} does not exist, or cannot be accessed.");
+                    return new List<string>();
                 }
 
-                validSubfolders.AddRange(SearchForFolders(subfolder));
+                foreach (var entry in path.EnumerateFiles("*", new EnumerationOptions { IgnoreInaccessible = true, RecurseSubdirectories = true }))
+                {
+                    if (entry.DirectoryName == null)
+                    {
+                        continue;
+                    }
+                    // if we find a .chart or .mid then we validate it for a song folder
+                    if (entry.Extension == ".chart" || entry.Extension == ".mid")
+                    {
+                        if (IsValidSongFolder(entry.DirectoryName))
+                        {
+                            validSongFolders.Add(entry.DirectoryName);
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Error checking path: {rootFolder}\n{e}");
+                // return without any folders so that the error is visible in the cli
+                return new List<string>();
             }
 
-            return validSubfolders;
+            return validSongFolders.ToList();
         }
 
-        private static bool IsValidSubfolder(string subfolder)
+        private static bool IsValidSongFolder(string subfolder)
         {
             string[] files = Directory.GetFiles(subfolder);
             bool hasChart = files.Any(f => f.EndsWith(".chart"));
@@ -412,7 +436,6 @@ namespace SngCli
 
         private static async Task<(long startingSize, long encodedSize)> EncodeSubFolder(SngFile sngFile, string folder, string folderRelativePath)
         {
-
             string MakeFileName(string fileName)
             {
                 return $"{folderRelativePath}/{fileName}";
@@ -471,7 +494,6 @@ namespace SngCli
 
         private static async Task<(long startingSize, long encodedSize)> EncodeFolder(SngFile sngFile, string folder)
         {
-
             string MakeFileName(string fileName, bool knownFile)
             {
                 return knownFile ? fileName.ToLowerInvariant() : fileName;
@@ -604,23 +626,32 @@ namespace SngCli
                 // encode the top level folder first
                 (long startingSize, long encodedSize) = await EncodeFolder(sngFile, songFolder);
 
-                // TODO - This does not work with nested sub-folders
-                var subfolders = Directory.GetDirectories(songFolder, "*", new EnumerationOptions() { RecurseSubdirectories = true });
+                Stack<string> pathStack = new(Directory.GetDirectories(songFolder, "*", new EnumerationOptions() { RecurseSubdirectories = false }));
 
-
-                foreach (var subfolder in subfolders)
+                while (pathStack.TryPop(out var path))
                 {
-                    // Skip any excluded folders
-                    string folderName = Path.GetDirectoryName(songFolder)!;
+                    // Skip any folders that are commonly ignored such as the __MACOSX folders
+                    string folderName = Path.GetDirectoryName(path)!;
                     if (excludeFolders.Contains(folderName))
                     {
                         continue;
                     }
-                    string folderRelativePath = Path.GetRelativePath(songFolder, subfolder).Replace("\\", "/");
+                    string folderRelativePath = Path.GetRelativePath(songFolder, path).Replace("\\", "/");
 
-                    var fileInfo = await EncodeSubFolder(sngFile, subfolder, folderRelativePath);
-                    startingSize += fileInfo.startingSize;
-                    encodedSize += fileInfo.encodedSize;
+                    // only add a subfolder if it's not detected as a valid song folder
+                    // This also prunes any sub-folders of this directory from being added to this sng file
+                    if (!IsValidSongFolder(path))
+                    {
+                        var fileInfo = await EncodeSubFolder(sngFile, path, folderRelativePath);
+                        startingSize += fileInfo.startingSize;
+                        encodedSize += fileInfo.encodedSize;
+
+                        // add any direct sub-folders of this directory to scan
+                        foreach (var subFolder in Directory.EnumerateDirectories(path, "*", new EnumerationOptions() { RecurseSubdirectories = false }))
+                        {
+                            pathStack.Push(subFolder);
+                        }
+                    }
                 }
 
                 ConMan.Out($"{fullPath} Saving compression ratio: {startingSize / (double)encodedSize:0.00}x");
