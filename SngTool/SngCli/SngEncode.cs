@@ -534,7 +534,9 @@ namespace SngCli
                     {
                         fileData = await EncodeImage(MakeFileName(fileName, true), file, conf.AlbumUpscale, conf.AlbumSize, conf.JpegEncode);
                     }
-                    else if (!conf.SkipUnknown)
+                    else if (!conf.SkipUnknown ||
+                        fileName.StartsWith("background", StringComparison.OrdinalIgnoreCase) ||
+                        fileName.StartsWith("highway", StringComparison.OrdinalIgnoreCase))
                     {
                         // don't re-encode a file if they are already jpegs
                         bool encodeJpg = (conf.JpegEncode || (conf.JpegEncode && conf.EncodeUnknown)) && (!file.EndsWith(".jpg") || file.EndsWith(".jpeg"));
