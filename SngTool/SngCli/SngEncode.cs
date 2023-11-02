@@ -323,6 +323,9 @@ namespace SngCli
         private static readonly string audioPattern = @"(?i).*\.(wav|opus|ogg|mp3)$";
         private static Regex audioRegex = new Regex(audioPattern, RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
+        private static readonly string sngPattern = @"(?i).*\.sng$";
+        private static Regex sngRegex = new Regex(sngPattern, RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
         private static readonly string[] supportedImageNames = { "background", "highway", "album" };
 
         private static readonly string[] supportedAudioNames =
@@ -432,6 +435,12 @@ namespace SngCli
                     continue;
                 }
 
+                // Skip any sng files found
+                if (sngRegex.IsMatch(file))
+                {
+                    continue;
+                }
+
                 if (audioRegex.IsMatch(file) && !conf.SkipUnknown)
                 {
                     bool encodeOpus = conf.OpusEncode || conf.EncodeUnknown;
@@ -480,6 +489,13 @@ namespace SngCli
                 FileInfo fileInfo = new FileInfo(file);
                 startingSize += fileInfo.Length;
                 var fileName = Path.GetFileName(file);
+
+                // Skip any sng files found
+                if (sngRegex.IsMatch(file))
+                {
+                    continue;
+                }
+
                 if (audioRegex.IsMatch(file))
                 {
                     var knownAudio = MatchesNames(fileName, supportedAudioNames);
