@@ -443,12 +443,13 @@ namespace SngCli
 
                 if (audioRegex.IsMatch(file) && !conf.SkipUnknown)
                 {
-                    bool encodeOpus = conf.OpusEncode || conf.EncodeUnknown;
+                    bool encodeOpus = conf.OpusEncode || (conf.OpusEncode && conf.EncodeUnknown);
                     fileData = await EncodeAudio(MakeFileName(fileName), file, encodeOpus);
                 }
                 else if (imageRegex.IsMatch(file) && !conf.SkipUnknown)
                 {
-                    bool encodeJpg = conf.JpegEncode || conf.EncodeUnknown;
+                    // don't re-encode a file if they are already jpegs
+                    bool encodeJpg = (conf.JpegEncode || (conf.JpegEncode && conf.EncodeUnknown)) && (!file.EndsWith(".jpg") || file.EndsWith(".jpeg"));
                     fileData = await EncodeImage(MakeFileName(fileName), file, false, JpegEncoding.SizeTiers.None, encodeJpg);
                 }
                 else
@@ -501,7 +502,7 @@ namespace SngCli
                     var knownAudio = MatchesNames(fileName, supportedAudioNames);
                     if (!conf.SkipUnknown || knownAudio)
                     {
-                        bool encodeOpus = conf.OpusEncode || conf.EncodeUnknown;
+                        bool encodeOpus = conf.OpusEncode || (conf.OpusEncode && conf.EncodeUnknown);
                         fileData = await EncodeAudio(MakeFileName(fileName, knownAudio), file, encodeOpus);
                     }
                 }
@@ -535,7 +536,8 @@ namespace SngCli
                     }
                     else if (!conf.SkipUnknown)
                     {
-                        bool encodeJpg = conf.JpegEncode || conf.EncodeUnknown;
+                        // don't re-encode a file if they are already jpegs
+                        bool encodeJpg = (conf.JpegEncode || (conf.JpegEncode && conf.EncodeUnknown)) && (!file.EndsWith(".jpg") || file.EndsWith(".jpeg"));
                         fileData = await EncodeImage(MakeFileName(fileName, knownImage), file, false, JpegEncoding.SizeTiers.None, encodeJpg);
                     }
                 }
