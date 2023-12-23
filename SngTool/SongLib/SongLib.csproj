@@ -13,7 +13,8 @@
 
   <ItemGroup>
     <PackageReference Include="SixLabors.ImageSharp" Version="3.0.0" />
-    <PackageReference Include="VorbisPizza" Version="1.3.0" />
+    <PackageReference Include="BinaryEx" Version="0.2.0" />
+    <!-- <PackageReference Include="VorbisPizza" Version="1.3.0" /> -->
   </ItemGroup>
 
   <ItemGroup Condition="$(IsWindows) == 'True'">
@@ -22,6 +23,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\NLayer\NLayer.csproj" />
+    <ProjectReference Include="..\NVorbis\NVorbis.csproj" />
     <ProjectReference Include="..\SngLib\SngLib.csproj" />
   </ItemGroup>
 

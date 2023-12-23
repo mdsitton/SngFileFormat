@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "SngCli": {
+      "commandName": "Project",
+      "commandLineArgs": "encode --input H:\\OrganizedSongs\\staging\\ --output .\\out"
+    }
+  }
+}

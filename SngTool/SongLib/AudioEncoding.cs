@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using NVorbis;
 using NLayer;
 using Cysharp.Collections;
+using System.Net;
 
 namespace SongLib
 {
@@ -18,18 +19,54 @@ namespace SongLib
         {
             (string filename, NativeByteArray? data) outData;
 
-            // opusenc doesn't support loading mp3 or ogg vorbis
-            if (filePath.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase))
+            bool isWav = false;
+            bool isVorbis = false;
+            bool isOpus = false;
+            bool isFlac = false;
+
+            using (var fs = File.OpenRead(filePath))
             {
-                outData = await EncodeMp3ToOpus(filePath, bitRate);
+                if (WavParser.IsWav(fs, filePath))
+                {
+                    isWav = true;
+                }
+                else if (OggParser.IsOggFile(fs))
+                {
+                    fs.Seek(0, SeekOrigin.Begin);
+                    if (OggParser.IsOggEncoding(fs, OggEncoding.Vorbis, filePath))
+                    {
+                        isVorbis = true;
+                    }
+                    else if (OggParser.IsOggEncoding(fs, OggEncoding.Opus, filePath))
+                    {
+                        isOpus = true;
+                    }
+                    else if (OggParser.IsOggEncoding(fs, OggEncoding.Flac, filePath))
+                    {
+                        isFlac = true;
+                    }
+                }
             }
-            else if (filePath.EndsWith(".ogg", StringComparison.OrdinalIgnoreCase))
+
+            if (isWav)
+            {
+                outData = await EncodeFileToOpus(filePath, bitRate);
+            }
+            else if (isVorbis)
             {
                 outData = await EncodeVorbisToOpus(filePath, bitRate);
             }
-            else
+            else if (isOpus)
+            {
+                outData = await ReadFileData(filePath);
+            }
+            else if (isFlac)
             {
                 outData = await EncodeFileToOpus(filePath, bitRate);
+            }
+            else
+            {
+                outData = await EncodeMp3ToOpus(filePath, bitRate);
             }
 
             if (outData.data == null)
@@ -39,6 +76,11 @@ namespace SongLib
             return outData;
         }
 
+        private static async Task<(string filename, NativeByteArray? data)> ReadFileData(string filePath)
+        {
+            var name = Path.GetFileName(filePath);
+            return (Path.ChangeExtension(name, ".opus"), await LargeFile.ReadAllBytesAsync(filePath));
+        }
 
         /// <summary>
         /// Decode OGG/Vorbis file and convert into an opus file
@@ -63,7 +105,8 @@ namespace SongLib
                     while (true)
                     {
                         var remaining = (vorbis.TotalSamples - vorbis.SamplePosition) * vorbis.Channels;
-                        var count = vorbis.ReadSamples(samples) * vorbis.Channels;
+                        var count = 128;
+                        count = vorbis.ReadSamples(samples) * vorbis.Channels;
                         if (count == 0)
                         {
                             break;

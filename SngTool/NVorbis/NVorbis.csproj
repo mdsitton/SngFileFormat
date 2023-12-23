@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net7.0</TargetFramework>
+        <RootNamespace>NVorbis</RootNamespace>
+        <Description>A fully managed implementation of a Xiph.org Foundation Ogg Vorbis decoder.</Description>
+        <Copyright>Copyright © TechPizza 2022</Copyright>
+        <Company>TechPizza</Company>
+        <AssemblyName>VorbisPizza</AssemblyName>
+        <AssemblyVersion>1.3.0</AssemblyVersion>
+        <FileVersion>1.3.0.0</FileVersion>
+        <Authors>Andrew Ward;TechPizza</Authors>
+        <Version>1.3.0</Version>
+        <PackageId>VorbisPizza</PackageId>
+        <PackageProjectUrl>https://github.com/TechPizzaDev/VorbisPizza</PackageProjectUrl>
+        <PackageReleaseNotes>-Fixed seeking by not relying on position markers</PackageReleaseNotes>
+        <PackageTags>Ogg;Vorbis;Xiph;Audio;Sound</PackageTags>
+        <NeutralLanguage>en</NeutralLanguage>
+        <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <RepositoryUrl>https://github.com/TechPizzaDev/VorbisPizza</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <PackageLicenseFile>LICENSE</PackageLicenseFile>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="..\LICENSE">
+            <Pack>True</Pack>
+            <PackagePath></PackagePath>
+        </None>
+    </ItemGroup>
+</Project>

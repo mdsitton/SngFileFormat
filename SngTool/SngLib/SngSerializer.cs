@@ -266,7 +266,7 @@ namespace SngLib
 
         private static void WriteHeader(this SngFile sngFile, byte[] bytesOut, ref int pos)
         {
-            bytesOut.WriteBytes(ref pos, FileIdentifierBytes, (uint)FileIdentifierBytes.Length);
+            bytesOut.WriteBytes(ref pos, FileIdentifierBytes, FileIdentifierBytes.Length);
             bytesOut.WriteUInt32LE(ref pos, sngFile.Version);
             bytesOut.WriteBytes(ref pos, sngFile.XorMask, 16);
         }
@@ -284,17 +284,16 @@ namespace SngLib
                 byte[] bytesKey = Encoding.UTF8.GetBytes(metadata.Key);
 
                 bytesOut.WriteInt32LE(ref pos, bytesKey.Length);
-                bytesOut.WriteBytes(ref pos, bytesKey, (uint)bytesKey.Length);
+                bytesOut.WriteBytes(ref pos, bytesKey, bytesKey.Length);
 
                 var bytesValue = Encoding.UTF8.GetBytes(metadata.Value);
                 bytesOut.WriteInt32LE(ref pos, bytesValue.Length);
-                bytesOut.WriteBytes(ref pos, bytesValue, (uint)bytesValue.Length);
+                bytesOut.WriteBytes(ref pos, bytesValue, bytesValue.Length);
             }
         }
 
         private static void WriteFileIndex(this SngFile sngFile, long fileIndexSize, ulong startOfFileIndex, byte[] bytesOut, ref int pos)
         {
-
             bytesOut.WriteUInt64LE(ref pos, (ulong)fileIndexSize);
             bytesOut.WriteUInt64LE(ref pos, (ulong)CountNonNullFiles(sngFile.Files.Values));
             ulong fileOffset = startOfFileIndex;
