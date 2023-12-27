@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SongLib", "SongLib\SongLib.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NLayer", "NLayer\NLayer.csproj", "{0D789C98-4957-473A-9753-BB97D0DC743D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NVorbis", "NVorbis\NVorbis.csproj", "{018993E2-EB63-4D66-84B0-0B5D0EC1D7C1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{0D789C98-4957-473A-9753-BB97D0DC743D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0D789C98-4957-473A-9753-BB97D0DC743D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0D789C98-4957-473A-9753-BB97D0DC743D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{018993E2-EB63-4D66-84B0-0B5D0EC1D7C1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{018993E2-EB63-4D66-84B0-0B5D0EC1D7C1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{018993E2-EB63-4D66-84B0-0B5D0EC1D7C1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{018993E2-EB63-4D66-84B0-0B5D0EC1D7C1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

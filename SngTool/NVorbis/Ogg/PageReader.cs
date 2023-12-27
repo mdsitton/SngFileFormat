@@ -204,7 +204,6 @@ namespace NVorbis.Ogg
             foreach (KeyValuePair<int, IStreamPageReader> kvp in _streamReaders)
             {
                 kvp.Value.SetEndOfStream();
-                kvp.Value.Dispose();
             }
             _streamReaders.Clear();
         }

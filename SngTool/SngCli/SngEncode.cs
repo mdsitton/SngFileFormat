@@ -411,13 +411,14 @@ namespace SngCli
         private static async Task<(string filename, NativeByteArray? data)> EncodeAudio(string fileName, string filePath, bool opusEncode = false)
         {
             var conf = SngEncodingConfig.Instance;
-            if (opusEncode && !fileName.EndsWith(".opus", StringComparison.OrdinalIgnoreCase))
+            if (opusEncode)
             {
                 return await AudioEncoding.ToOpus(filePath, conf.OpusBitrate);
             }
             else
             {
-                return (fileName, await LargeFile.ReadAllBytesAsync(filePath));
+                var format = AudioEncoding.DetermineAudioFormat(filePath);
+                return (Path.ChangeExtension(fileName, AudioEncoding.GetAudioFormatExtention(format)), await LargeFile.ReadAllBytesAsync(filePath));
             }
         }
 

@@ -24,7 +24,6 @@ public class WavParser
             Span<byte> riffIdentifierBytes = stackalloc byte[RiffIdentifier.Length];
             pos += Encoding.ASCII.GetBytes(RiffIdentifier, riffIdentifierBytes);
             Span<byte> riffHeaderBytes = header.AsSpan(0, RiffIdentifier.Length);
-            Console.WriteLine($"Is wav riff: {riffIdentifierBytes.SequenceEqual(riffHeaderBytes)} {Encoding.ASCII.GetString(riffHeaderBytes)} {filePath}");
             if (!riffIdentifierBytes.SequenceEqual(riffHeaderBytes))
             {
                 return false;
@@ -40,7 +39,6 @@ public class WavParser
             Span<byte> wavIdBytes = stackalloc byte[WaveIdentifier.Length];
             header.ReadCountLE(ref pos, wavIdBytes);
 
-            Console.WriteLine($"Is wav WAVE: {waveIdentifierBytes.SequenceEqual(wavIdBytes)} {Encoding.ASCII.GetString(wavIdBytes)} {filePath}");
             if (!waveIdentifierBytes.SequenceEqual(wavIdBytes))
             {
                 return false;
@@ -52,7 +50,6 @@ public class WavParser
 
             Span<byte> fmtIdBytes = stackalloc byte[FmtIdentifier.Length];
             header.ReadCountLE(ref pos, fmtIdBytes);
-            Console.WriteLine($"Is wav fmt: {fmtIdentifierBytes.SequenceEqual(fmtIdBytes)} {Encoding.ASCII.GetString(fmtIdBytes)} {filePath}");
             if (!fmtIdentifierBytes.SequenceEqual(fmtIdBytes))
             {
                 return false;
@@ -60,7 +57,6 @@ public class WavParser
 
             int fmtChunkSize = header.ReadInt32LE(ref pos);
 
-            Console.WriteLine($"Is wav correct size: {fmtChunkSize} {filePath}");
             // opusenc only supports 16 byte chunk sizes and larger
             // While there is technically a 14 byte chunk in older files, it is not supported by opusenc
             if (fmtChunkSize < 16)
@@ -96,7 +92,6 @@ public class WavParser
                 audioFormat = (ushort)a; // first segment of GUID is the audio format
             }
 
-            Console.WriteLine($"Is wav correct format: {audioFormat} {filePath}");
             if (audioFormat == 1 || audioFormat == 3)
             {
                 return true;

@@ -79,7 +79,7 @@ namespace NVorbis
             }
         }
 
-        private static Exception GetInvalidStreamException(ref VorbisPacket packet)
+        private static ArgumentException GetInvalidStreamException(ref VorbisPacket packet)
         {
             try
             {
@@ -282,7 +282,7 @@ namespace NVorbis
             _modes = new Mode[packet.ReadBits(6) + 1];
             for (int i = 0; i < _modes.Length; i++)
             {
-                _modes[i] = new Mode(ref packet, _channels, _block0Size, _block1Size, mappings);
+                _modes[i] = new Mode(ref packet, _block0Size, _block1Size, mappings);
             }
 
             // verify the closing bit
@@ -363,6 +363,12 @@ namespace NVorbis
             if (buffer == null)
             {
                 return;
+            }
+
+            Debug.Assert(buffer.Length == _channels);
+            for (int i = 0; i < buffer.Length; i++)
+            {
+                Debug.Assert(buffer[i].Length == _block1Size);
             }
 
             if (_bufferPool.Count < MaxPooledBuffers)
@@ -555,14 +561,14 @@ namespace NVorbis
                 
                 bool clipped = false;
 
-                for (; j < count; j++)
+                for (int i = j; i < count; i++)
                 {
-                    float p = Unsafe.Add(ref prev, j);
+                    float p = Unsafe.Add(ref prev, i);
                     if (T.IsClip)
                     {
                         p = Utils.ClipValue(p, ref clipped);
                     }
-                    Unsafe.Add(ref tar, j * channels) = p;
+                    Unsafe.Add(ref tar, i * channels) = p;
                 }
 
                 _hasClipped |= clipped;
@@ -593,7 +599,7 @@ namespace NVorbis
                         {
                             Vector<float> p0 = VectorHelper.LoadUnsafe(ref src, j);
                             Vector<float> c0 = Utils.ClipValue(p0, ref clipped);
-                            c0.StoreUnsafe(ref dst, j);
+                            c0.StoreUnsafe(ref dst, (nuint) j);
                         }
 
                         _hasClipped |= !Vector.EqualsAll(clipped, Vector<float>.Zero);
@@ -638,7 +644,7 @@ namespace NVorbis
                 int diff = (int)(samplePosition - actualEnd);
                 if (diff < 0)
                 {
-                    validLen += diff;
+                    validLen = Math.Max(validLen + diff, 0);
                 }
             }
 
@@ -752,7 +758,7 @@ namespace NVorbis
                         Vector<float> pi = VectorHelper.LoadUnsafe(ref prev, i);
 
                         Vector<float> result = ni + pi;
-                        result.StoreUnsafe(ref next, i);
+                        result.StoreUnsafe(ref next, (nuint) i);
                     }
                 }
                 for (; i < length; i++)

@@ -23,7 +23,7 @@ encode:
       --skipUnknown     Skip unknown files.By default unknown files are included (All audio and images of supported formats are transcoded)
       --videoExclude    Exclude video files
       --opusEncode      Encode all audio to opus
-      --opusBitrate     Set opus encoder bitrate, default: 128
+      --opusBitrate     Set opus encoder bitrate, default: 80
       --jpegEncode      Encode all images to JPEG
       --jpegQuality     JPEG encoding quality, default: 75
       --albumUpscale    Enable upscaling album art, by default images are only shrunk.
@@ -46,6 +46,8 @@ decode:
 ```
 
 When encoding this tool can also do audio transcoding to opus, and image transcoding to JPEG. Opus encoding takes a significant amount of time for larger song libraries. The more cpu cores you have, the tool can take advantage of this, and encode multiple songs in parallel speeding up the process significantly.
+
+The current version of SngCli requires a version of the opusenc executable that contains the --raw-float flag. This from my understanding has not made it into a release yet so a custom version may be required to be compiled for your platform. Currently for windows this is bundled in the release downloads. This change was done because of a clipping issue with certain mp3 files encoded with float samples louder than 1.0f. 
 
 
 # SNG File Specification

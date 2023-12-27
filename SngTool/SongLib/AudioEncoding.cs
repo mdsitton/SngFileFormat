@@ -8,6 +8,7 @@ using NVorbis;
 using NLayer;
 using Cysharp.Collections;
 using System.Net;
+using System.Runtime;
 
 namespace SongLib
 {
@@ -15,58 +16,86 @@ namespace SongLib
     {
         public static bool verbose = false;
 
-        public static async Task<(string filename, NativeByteArray? data)> ToOpus(string filePath, int bitRate)
+        public enum FileType
         {
-            (string filename, NativeByteArray? data) outData;
+            Unknown,
+            Wav,
+            OggVorbis,
+            OggOpus,
+            OggFlac
+        }
 
-            bool isWav = false;
-            bool isVorbis = false;
-            bool isOpus = false;
-            bool isFlac = false;
-
+        public static FileType DetermineAudioFormat(string filePath)
+        {
             using (var fs = File.OpenRead(filePath))
             {
                 if (WavParser.IsWav(fs, filePath))
                 {
-                    isWav = true;
+                    return FileType.Wav;
                 }
                 else if (OggParser.IsOggFile(fs))
                 {
                     fs.Seek(0, SeekOrigin.Begin);
                     if (OggParser.IsOggEncoding(fs, OggEncoding.Vorbis, filePath))
                     {
-                        isVorbis = true;
+                        return FileType.OggVorbis;
                     }
                     else if (OggParser.IsOggEncoding(fs, OggEncoding.Opus, filePath))
                     {
-                        isOpus = true;
+                        return FileType.OggOpus;
                     }
                     else if (OggParser.IsOggEncoding(fs, OggEncoding.Flac, filePath))
                     {
-                        isFlac = true;
+                        return FileType.OggFlac;
                     }
                 }
             }
+            return FileType.Unknown;
+        }
 
-            if (isWav)
+        public static string GetAudioFormatExtention(FileType fileType)
+        {
+            switch (fileType)
             {
-                outData = await EncodeFileToOpus(filePath, bitRate);
+                case FileType.Wav:
+                    return ".wav";
+                case FileType.OggFlac:
+                case FileType.OggVorbis:
+                    return ".ogg";
+                case FileType.OggOpus:
+                    return ".opus";
+                case FileType.Unknown:
+                default:
+                    return ".mp3";
             }
-            else if (isVorbis)
+        }
+
+        public static async Task<(string filename, NativeByteArray? data)> ToOpus(string filePath, int bitRate)
+        {
+            (string filename, NativeByteArray? data) outData;
+
+            Console.WriteLine($"Encoding {filePath}");
+
+            var fileType = DetermineAudioFormat(filePath);
+
+            switch (fileType)
             {
-                outData = await EncodeVorbisToOpus(filePath, bitRate);
-            }
-            else if (isOpus)
-            {
-                outData = await ReadFileData(filePath);
-            }
-            else if (isFlac)
-            {
-                outData = await EncodeFileToOpus(filePath, bitRate);
-            }
-            else
-            {
-                outData = await EncodeMp3ToOpus(filePath, bitRate);
+                case FileType.Wav: // opus enc directly supports wav files
+                    outData = await EncodeFileToOpus(filePath, bitRate);
+                    break;
+                case FileType.OggVorbis:
+                    outData = await EncodeVorbisToOpus(filePath, bitRate);
+                    break;
+                case FileType.OggOpus: // Don't re-encode opus files
+                    outData = await ReadFileDataAsOpus(filePath);
+                    break;
+                case FileType.OggFlac: // opus enc directly supports ogg/flac files
+                    outData = await EncodeFileToOpus(filePath, bitRate);
+                    break;
+                case FileType.Unknown: // fallback to mp3 since we don't have a type checker for it currently
+                default:
+                    outData = await EncodeMp3ToOpus(filePath, bitRate);
+                    break;
             }
 
             if (outData.data == null)
@@ -76,7 +105,7 @@ namespace SongLib
             return outData;
         }
 
-        private static async Task<(string filename, NativeByteArray? data)> ReadFileData(string filePath)
+        private static async Task<(string filename, NativeByteArray? data)> ReadFileDataAsOpus(string filePath)
         {
             var name = Path.GetFileName(filePath);
             return (Path.ChangeExtension(name, ".opus"), await LargeFile.ReadAllBytesAsync(filePath));
@@ -87,17 +116,21 @@ namespace SongLib
         /// </summary>
         private static async Task<(string filename, NativeByteArray? data)> EncodeVorbisToOpus(string filePath, int bitRate)
         {
-
             using (var fs = File.OpenRead(filePath))
             using (var bs = new BufferedStream(fs))
             using (var vorbis = new VorbisReader(bs, true))
             {
                 vorbis.Initialize();
+                if (vorbis.TotalSamples == 0)
+                {
+                    Console.WriteLine($"{filePath}: Vorbis file has no samples excluding from sng file");
+                    return (Path.GetFileName(filePath), null);
+                }
                 long totalSamples = vorbis.TotalSamples * vorbis.Channels;
                 long fileSize = PcmFileWriter.CalculateSizeEstimate(totalSamples);
 
                 using (var mmf = MemoryMappedFile.CreateNew(null, fileSize))
-                using (var writer = new PcmFileWriter(mmf, (ushort)vorbis.SampleRate, (ushort)vorbis.Channels, totalSamples))
+                using (var writer = new PcmFileWriter(mmf, vorbis.SampleRate, (ushort)vorbis.Channels, totalSamples))
                 {
                     int chunkSize = (int)Math.Min(totalSamples, writer.MaxChunkSamples);
                     float[] samples = new float[chunkSize];
@@ -141,6 +174,12 @@ namespace SongLib
                 var totalSamples = mp3.Length!.Value;
 
                 var fileSize = PcmFileWriter.CalculateSizeEstimate(totalSamples);
+
+                if (totalSamples == 0)
+                {
+                    Console.WriteLine($"{filePath}: Mp3 file has no samples excluding from sng file");
+                    return (Path.GetFileName(filePath), null);
+                }
 
                 using (var mmf = MemoryMappedFile.CreateNew(null, fileSize))
                 using (var writer = new PcmFileWriter(mmf, (ushort)mp3.SampleRate, (ushort)mp3.Channels, totalSamples))
@@ -248,14 +287,14 @@ namespace SongLib
                     await readTask;
                 }
 
-                process.WaitForExit();
+                await process.WaitForExitAsync();
 
                 if (process.ExitCode == 1)
                 {
                     Console.WriteLine($"{processName} encoding error!");
                     if (process.ExitCode == 1)
                     {
-                        Console.WriteLine(process.StandardError.ReadToEnd());
+                        Console.WriteLine(await process.StandardError.ReadToEndAsync());
                     }
                     return null;
                 }
@@ -274,7 +313,7 @@ namespace SongLib
         /// </summary>
         private async static Task<NativeByteArray?> EncodePcmToOpus(PcmFileWriter file, int bitRate)
         {
-            var args = $"--vbr --framesize 60 --bitrate {bitRate} --discard-pictures --discard-comments --raw --raw-bits {PcmFileWriter.BitsPerSample} --raw-rate {file.SampleRate} --raw-chan {file.Channels} - -";
+            var args = $"--vbr --framesize 60 --bitrate {bitRate} --discard-pictures --discard-comments --raw-float --raw-bits {PcmFileWriter.BitsPerSample} --raw-rate {file.SampleRate} --raw-chan {file.Channels} - -";
             return await RunAudioProcess("opusenc", args, file.mappedFile, verbose);
         }
 
@@ -294,9 +333,7 @@ namespace SongLib
                 return (fileName, null);
             }
 
-            var name = Path.GetFileNameWithoutExtension(filePath);
-            return ($"{name}.opus", encodeData);
-
+            return (Path.ChangeExtension(fileName, ".opus"), encodeData);
         }
 
         /// <summary>

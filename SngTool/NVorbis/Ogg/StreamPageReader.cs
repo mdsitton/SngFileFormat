@@ -51,7 +51,10 @@ namespace NVorbis.Ogg
 
             // verify the new page's flags
             PageHeader header = pageData.Header;
+            int seqNumber = header.SequenceNumber;
+            PageFlags flags = header.PageFlags;
             long granulePosition = header.GranulePosition;
+
             header.GetPacketCount(out ushort packetCount, out _, out bool isContinued);
 
             // if the page's granule position is 0 or less it doesn't have any sample
@@ -76,12 +79,12 @@ namespace NVorbis.Ogg
                     "Granule Position was -1 but page does not have exactly 1 continued packet.");
             }
 
-            if ((header.PageFlags & PageFlags.EndOfStream) != 0)
+            if ((flags & PageFlags.EndOfStream) != 0)
             {
                 HasAllPages = true;
             }
 
-            if (pageData.IsResync || (_lastSeqNbr != 0 && _lastSeqNbr + 1 != header.SequenceNumber))
+            if (pageData.IsResync || (_lastSeqNbr != 0 && _lastSeqNbr + 1 != seqNumber))
             {
                 // as a practical matter, if the sequence numbers are "wrong",
                 // our logical stream is now out of sync so whether the page header sync was lost
@@ -93,14 +96,13 @@ namespace NVorbis.Ogg
                 _pageOffsets.Add(pageOffset);
             }
 
-            _lastSeqNbr = header.SequenceNumber;
+            _lastSeqNbr = seqNumber;
 
             pageData.IncrementRef();
-            _lastPage?.DecrementRef();
-            _lastPage = pageData;
+            SetLastPage(pageData);
 
             _lastPageGranulePos = granulePosition;
-            _lastPageIsContinuation = (header.PageFlags & PageFlags.ContinuesPacket) != 0;
+            _lastPageIsContinuation = (flags & PageFlags.ContinuesPacket) != 0;
             _lastPageIsContinued = isContinued;
             _lastPagePacketCount = packetCount;
             _lastPageOverhead = header.PageOverhead;
@@ -134,8 +136,8 @@ namespace NVorbis.Ogg
                     if (pageIndex == _lastPageIndex)
                     {
                         Debug.Assert(_lastPage == null);
-                        _lastPage = page;
-                        _lastPage.IncrementRef();
+                        page.IncrementRef();
+                        SetLastPage(page);
                     }
                     return page;
                 }
@@ -427,8 +429,7 @@ namespace NVorbis.Ogg
         {
             header.GetPacketCount(out packetCount, out _, out isContinued);
 
-            _lastPage?.DecrementRef();
-            _lastPage = pageData;
+            SetLastPage(pageData);
 
             _lastPageGranulePos = granulePos = header.GranulePosition;
             _lastPageIsContinuation = isContinuation = (header.PageFlags & PageFlags.ContinuesPacket) != 0;
@@ -441,6 +442,7 @@ namespace NVorbis.Ogg
         public void SetEndOfStream()
         {
             HasAllPages = true;
+            SetLastPage(null);
         }
 
         public long PageCount => _pageOffsets.Count;
@@ -451,14 +453,21 @@ namespace NVorbis.Ogg
 
         public long FirstDataPageIndex => FindFirstDataPage();
 
+        private void SetLastPage(PageData? pageData)
+        {
+            Debug.Assert(pageData == null || pageData._refCount > 0);
+
+            _lastPage?.DecrementRef();
+            _lastPage = pageData;
+        }
+
         private void Dispose(bool disposing)
         {
             if (!_isDisposed)
             {
                 if (disposing)
                 {
-                    _lastPage?.DecrementRef();
-                    _lastPage = null;
+                    SetLastPage(null);
                 }
                 _isDisposed = true;
             }

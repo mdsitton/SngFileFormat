@@ -115,67 +115,69 @@ namespace NVorbis
         }
 
         public virtual void Decode(
-            ref VorbisPacket packet, ReadOnlySpan<bool> doNotDecodeChannel, int blockSize, float[][] buffer)
+            ref VorbisPacket packet, ReadOnlySpan<bool> doNotDecodeChannel, int blockSize, ReadOnlySpan<float[]> buffers)
         {
             // this is pretty well stolen directly from libvorbis...  BSD license
             int end = _end < blockSize / 2 ? _end : blockSize / 2;
             int n = end - _begin;
 
-            if (n > 0 && doNotDecodeChannel.IndexOf(false) != -1)
+            if (n <= 0 || !doNotDecodeChannel.Contains(false))
             {
-                int channels = _channels;
-                int[] decodeMap = _decodeMap;
-                byte[] cascade = _cascade;
-                int partitionCount = n / _partitionSize;
+                return;
+            }
 
-                int partitionWords = (partitionCount + _classBook.Dimensions - 1) / _classBook.Dimensions;
-                int cacheLength = channels * partitionWords;
+            int channels = _channels;
+            int[] decodeMap = _decodeMap;
+            byte[] cascade = _cascade;
+            int partitionCount = n / _partitionSize;
 
-                if (_partWordCache == null || _partWordCache.Length < cacheLength)
-                    Array.Resize(ref _partWordCache, cacheLength);
-                Span<int> partWordCache = _partWordCache.AsSpan(0, cacheLength);
+            int partitionWords = (partitionCount + _classBook.Dimensions - 1) / _classBook.Dimensions;
+            int cacheLength = channels * partitionWords;
 
-                for (int stage = 0; stage < _maxStages; stage++)
+            if (_partWordCache == null || _partWordCache.Length < cacheLength)
+                Array.Resize(ref _partWordCache, cacheLength);
+            Span<int> partWordCache = _partWordCache.AsSpan(0, cacheLength);
+
+            for (int stage = 0; stage < _maxStages; stage++)
+            {
+                for (int partitionIdx = 0, entryIdx = 0; partitionIdx < partitionCount; entryIdx++)
                 {
-                    for (int partitionIdx = 0, entryIdx = 0; partitionIdx < partitionCount; entryIdx++)
+                    if (stage == 0)
                     {
-                        if (stage == 0)
+                        for (int ch = 0; ch < channels; ch++)
                         {
-                            for (int ch = 0; ch < channels; ch++)
+                            int idx = _classBook.DecodeScalar(ref packet);
+                            if (idx >= 0 && idx < decodeMap.Length)
                             {
-                                int idx = _classBook.DecodeScalar(ref packet);
-                                if (idx >= 0 && idx < decodeMap.Length)
-                                {
-                                    partWordCache[ch * partitionWords + entryIdx] = idx;
-                                }
-                                else
-                                {
-                                    partitionIdx = partitionCount;
-                                    stage = _maxStages;
-                                    break;
-                                }
+                                partWordCache[ch * partitionWords + entryIdx] = idx;
+                            }
+                            else
+                            {
+                                partitionIdx = partitionCount;
+                                stage = _maxStages;
+                                break;
                             }
                         }
+                    }
 
-                        for (int dimIdx = 0; partitionIdx < partitionCount && dimIdx < _classBook.Dimensions; dimIdx++, partitionIdx++)
+                    for (int dimIdx = 0; partitionIdx < partitionCount && dimIdx < _classBook.Dimensions; dimIdx++, partitionIdx++)
+                    {
+                        int offset = _begin + partitionIdx * _partitionSize;
+                        for (int ch = 0; ch < channels; ch++)
                         {
-                            int offset = _begin + partitionIdx * _partitionSize;
-                            for (int ch = 0; ch < channels; ch++)
+                            int mapIndex = partWordCache[ch * partitionWords + entryIdx] * _classBook.Dimensions;
+                            int idx = decodeMap[mapIndex + dimIdx];
+                            if ((cascade[idx] & (1 << stage)) != 0)
                             {
-                                int mapIndex = partWordCache[ch * partitionWords + entryIdx] * _classBook.Dimensions;
-                                int idx = decodeMap[mapIndex + dimIdx];
-                                if ((cascade[idx] & (1 << stage)) != 0)
+                                Codebook book = _books[idx][stage];
+                                if (book != null)
                                 {
-                                    Codebook book = _books[idx][stage];
-                                    if (book != null)
+                                    if (WriteVectors(book, ref packet, buffers, ch, offset, _partitionSize))
                                     {
-                                        if (WriteVectors(book, ref packet, buffer, ch, offset, _partitionSize))
-                                        {
-                                            // bad packet...  exit now and try to use what we already have
-                                            partitionIdx = partitionCount;
-                                            stage = _maxStages;
-                                            break;
-                                        }
+                                        // bad packet...  exit now and try to use what we already have
+                                        partitionIdx = partitionCount;
+                                        stage = _maxStages;
+                                        break;
                                     }
                                 }
                             }
@@ -186,12 +188,12 @@ namespace NVorbis
         }
 
         protected virtual bool WriteVectors(
-            Codebook codebook, ref VorbisPacket packet, float[][] residue, int channel, int offset, int partitionSize)
+            Codebook codebook, ref VorbisPacket packet, ReadOnlySpan<float[]> residues, int channel, int offset, int partitionSize)
         {
-            float[] res = residue[channel];
             int steps = partitionSize / codebook.Dimensions;
-
-            for (int step = 0; step < steps; step++, offset++)
+            Span<float> res = residues[channel].AsSpan(offset, steps);
+            
+            for (int step = 0; step < steps; step++)
             {
                 int entry = codebook.DecodeScalar(ref packet);
                 if (entry == -1)
@@ -205,7 +207,7 @@ namespace NVorbis
                 {
                     r += lookup[dim];
                 }
-                res[offset] += r;
+                res[step] += r;
             }
             return false;
         }

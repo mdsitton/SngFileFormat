@@ -1,6 +1,8 @@
 using System;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Runtime.Intrinsics;
 using NVorbis.Contracts;
 
 namespace NVorbis
@@ -98,7 +100,7 @@ namespace NVorbis
         }
 
         [SkipLocalsInit]
-        public void DecodePacket(ref VorbisPacket packet, int blockSize, int channels, float[][] buffer)
+        public void DecodePacket(ref VorbisPacket packet, int blockSize, ReadOnlySpan<float[]> buffers)
         {
             Span<bool> noExecuteChannel = stackalloc bool[256];
             int halfBlockSize = blockSize >> 1;
@@ -114,7 +116,7 @@ namespace NVorbis
                 noExecuteChannel[i] = !floorData[i].ExecuteChannel;
 
                 // pre-clear the residue buffers
-                Array.Clear(buffer[i], 0, halfBlockSize);
+                Array.Clear(buffers[i], 0, halfBlockSize);
             }
 
             // make sure we handle no-energy channels correctly given the couplings..
@@ -139,7 +141,7 @@ namespace NVorbis
                     }
                 }
 
-                _submapResidue[i].Decode(ref packet, noExecuteChannel, blockSize, buffer);
+                _submapResidue[i].Decode(ref packet, noExecuteChannel, blockSize, buffers);
             }
 
             // inverse coupling
@@ -151,49 +153,10 @@ namespace NVorbis
                     continue;
                 }
 
-                Span<float> magnitudeSpan = buffer[_couplingMangitude[i]].AsSpan(0, halfBlockSize);
-                Span<float> angleSpan = buffer[_couplingAngle[i]].AsSpan(0, halfBlockSize);
-
-                ref float magnitude = ref MemoryMarshal.GetReference(magnitudeSpan);
-                ref float angle = ref MemoryMarshal.GetReference(angleSpan);
-
                 // we only have to do the first half; MDCT ignores the last half
-                for (int j = 0; j < halfBlockSize; j++)
-                {
-                    float oldM = Unsafe.Add(ref magnitude, j);
-                    float oldA = Unsafe.Add(ref angle, j);
-
-                    float newM = oldM;
-                    float newA = oldA;
-
-                    if (oldM > 0)
-                    {
-                        if (oldA > 0)
-                        {
-                            newA = oldM - oldA;
-                        }
-                        else
-                        {
-                            newM = oldM + oldA;
-                            newA = oldM;
-                        }
-                    }
-                    else
-                    {
-                        if (oldA > 0)
-                        {
-                            newA = oldM + oldA;
-                        }
-                        else
-                        {
-                            newM = oldM - oldA;
-                            newA = oldM;
-                        }
-                    }
-
-                    Unsafe.Add(ref magnitude, j) = newM;
-                    Unsafe.Add(ref angle, j) = newA;
-                }
+                Span<float> magnitudeSpan = buffers[_couplingMangitude[i]].AsSpan(0, halfBlockSize);
+                Span<float> angleSpan = buffers[_couplingAngle[i]].AsSpan(0, halfBlockSize);
+                ApplyCoupling(magnitudeSpan, angleSpan);
             }
 
             if (halfBlockSize > _buf2.Length)
@@ -206,14 +169,85 @@ namespace NVorbis
             {
                 if (floorData[c].ExecuteChannel)
                 {
-                    _channelFloor[c].Apply(floorData[c], blockSize, buffer[c]);
-                    Mdct.Reverse(buffer[c], _buf2, blockSize);
+                    _channelFloor[c].Apply(floorData[c], blockSize, buffers[c]);
+                    Mdct.Reverse(buffers[c], _buf2, blockSize);
                 }
                 else
                 {
                     // since we aren't doing the IMDCT, we have to explicitly clear the back half of the block
-                    Array.Clear(buffer[c], halfBlockSize, halfBlockSize);
+                    Array.Clear(buffers[c], halfBlockSize, halfBlockSize);
                 }
+            }
+        }
+
+        private static void ApplyCoupling(Span<float> magnitudeSpan, Span<float> angleSpan)
+        {
+            int length = Math.Min(magnitudeSpan.Length, angleSpan.Length);
+
+            ref float magnitude = ref MemoryMarshal.GetReference(magnitudeSpan);
+            ref float angle = ref MemoryMarshal.GetReference(angleSpan);
+
+            int j = 0;
+            if (Vector.IsHardwareAccelerated)
+            {
+                for (; j + Vector<float>.Count <= length; j += Vector<float>.Count)
+                {
+                    Vector<float> oldM = VectorHelper.LoadUnsafe(ref magnitude, j);
+                    Vector<float> oldA = VectorHelper.LoadUnsafe(ref angle, j);
+
+                    Vector<float> posM = Vector.GreaterThan<float>(oldM, Vector<float>.Zero);
+                    Vector<float> posA = Vector.GreaterThan<float>(oldA, Vector<float>.Zero);
+
+                    /*             newM; newA;
+                         m &  a ==    0    -1
+                         m & !a ==    1     0
+                        !m &  a ==    0     1
+                        !m & !a ==   -1     0
+                    */
+
+                    Vector<float> signMask = new Vector<uint>(1u << 31).As<uint, float>() & posM;
+                    Vector<float> signedA = oldA ^ signMask;
+                    Vector<float> newM = oldM - Vector.AndNot(signedA, posA);
+                    Vector<float> newA = oldM + (signedA & posA);
+
+                    newM.StoreUnsafe(ref magnitude, (nuint) j);
+                    newA.StoreUnsafe(ref angle, (nuint) j);
+                }
+            }
+
+            for (; j < length; j++)
+            {
+                float oldM = Unsafe.Add(ref magnitude, j);
+                float oldA = Unsafe.Add(ref angle, j);
+
+                float newM = oldM;
+                float newA = oldM;
+
+                if (oldM > 0)
+                {
+                    if (oldA > 0)
+                    {
+                        newA = oldM - oldA;
+                    }
+                    else
+                    {
+                        newM = oldM + oldA;
+                    }
+                }
+                else
+                {
+                    if (oldA > 0)
+                    {
+                        newA = oldM + oldA;
+                    }
+                    else
+                    {
+                        newM = oldM - oldA;
+                    }
+                }
+
+                Unsafe.Add(ref magnitude, j) = newM;
+                Unsafe.Add(ref angle, j) = newA;
             }
         }
     }

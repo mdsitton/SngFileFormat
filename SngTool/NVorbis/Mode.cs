@@ -14,17 +14,14 @@ namespace NVorbis
             public int PacketValidLength;
         }
 
-        private int _channels;
         private bool _blockFlag;
         private int _blockSize;
         private Mapping _mapping;
         private float[][] _windows;
         private OverlapInfo[] _overlapInfo;
 
-        public Mode(ref VorbisPacket packet, int channels, int block0Size, int block1Size, Mapping[] mappings)
+        public Mode(ref VorbisPacket packet, int block0Size, int block1Size, Mapping[] mappings)
         {
-            _channels = channels;
-
             _blockFlag = packet.ReadBit();
             if (0 != packet.ReadBits(32))
             {
@@ -153,7 +150,7 @@ namespace NVorbis
 
         public unsafe bool Decode(
             ref VorbisPacket packet,
-            float[][] buffers,
+            ReadOnlySpan<float[]> buffers,
             out int packetStartIndex,
             out int packetValidLength,
             out int packetTotalLength)
@@ -165,12 +162,12 @@ namespace NVorbis
                 out packetValidLength,
                 out packetTotalLength))
             {
-                _mapping.DecodePacket(ref packet, _blockSize, _channels, buffers);
+                _mapping.DecodePacket(ref packet, _blockSize, buffers);
 
                 int length = _blockSize;
                 Span<float> windowSpan = _windows[windowIndex].AsSpan(0, length);
 
-                for (int ch = 0; ch < _channels; ch++)
+                for (int ch = 0; ch < buffers.Length; ch++)
                 {
                     Span<float> bufferSpan = buffers[ch].AsSpan(0, length);
 
@@ -186,7 +183,7 @@ namespace NVorbis
                             Vector<float> v_window = VectorHelper.LoadUnsafe(ref window, i);
 
                             Vector<float> result = v_buffer * v_window;
-                            result.StoreUnsafe(ref buffer, i);
+                            result.StoreUnsafe(ref buffer, (nuint) i);
                         }
                     }
 

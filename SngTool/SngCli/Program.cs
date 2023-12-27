@@ -48,7 +48,7 @@ namespace SngCli
             Console.WriteLine("      --skipUnknown     Skip unknown files.By default unknown files are included (All audio and images of supported formats are transcoded)");
             Console.WriteLine("      --videoExclude    Exclude video files");
             Console.WriteLine("      --opusEncode      Encode all audio to opus");
-            Console.WriteLine("      --opusBitrate     Set opus encoder bitrate, default: 128");
+            Console.WriteLine("      --opusBitrate     Set opus encoder bitrate, default: 80");
             Console.WriteLine("      --jpegEncode      Encode all images to JPEG");
             Console.WriteLine("      --jpegQuality     JPEG encoding quality, default: 75");
             Console.WriteLine("      --albumUpscale    Enable upscaling album art, by default images are only shrunk.");

@@ -44,11 +44,10 @@ namespace NLayer.Decoder
         {
             if (_savedBuffer != null)
             {
-                if (destination.Length > _savedBuffer.Length)
-                    destination = destination.Slice(0, _savedBuffer.Length);
-
-                _savedBuffer.CopyTo(destination);
-                return destination.Length;
+                ReadOnlySpan<byte> source = _savedBuffer.AsSpan(offset);
+                source = source.Slice(0, Math.Min(source.Length, destination.Length));
+                source.CopyTo(destination);
+                return source.Length;
             }
             else
             {

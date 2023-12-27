@@ -115,6 +115,7 @@ namespace NVorbis.Ogg
         private void Dispose()
         {
             _pool.Return(this);
+            // System.GC.SuppressFinalize(this);
         }
 
         [DoesNotReturn]

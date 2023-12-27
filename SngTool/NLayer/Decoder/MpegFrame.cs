@@ -6,19 +6,19 @@ namespace NLayer.Decoder
 {
     public sealed class MpegFrame : FrameBase, IMpegFrame
     {
-        private static readonly int[][][] _bitRateTable =
+        private static readonly byte[][][] _bitRateTable =
         {
-            new int[][]
+            new byte[][]
             {
-                new int[] { 0, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448 },
-                new int[] { 0, 32, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 384 },
-                new int[] { 0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320 }
+                new byte[] { 0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56 },
+                new byte[] { 0, 4, 6, 7, 8, 10, 12, 14, 16, 20, 24, 28, 32, 40, 48 },
+                new byte[] { 0, 4, 5, 6, 7, 8, 10, 12, 14, 16, 20, 24, 28, 32, 40 }
             },
-            new int[][]
+            new byte[][]
             {
-                new int[] { 0, 32, 48, 56, 64, 80, 96, 112, 128, 144, 160, 176, 192, 224, 256 },
-                new int[] { 0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160 },
-                new int[] { 0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160 }
+                new byte[] { 0, 4, 6, 7, 8, 10, 12, 14, 16, 18, 20, 22, 24, 28, 32 },
+                new byte[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 18, 20 },
+                new byte[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 18, 20 }
             },
         };
 
@@ -422,7 +422,7 @@ namespace NLayer.Decoder
             {
                 if (BitRateIndex > 0)
                 {
-                    return _bitRateTable[(int)Version / 10 - 1][(int)Layer - 1][BitRateIndex] * 1000;
+                    return _bitRateTable[(int)Version / 10 - 1][(int)Layer - 1][BitRateIndex] * 8000;
                 }
                 else
                 {

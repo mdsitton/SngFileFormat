@@ -204,7 +204,7 @@ namespace NVorbis.Ogg
             long targetPageIndex, IPacketGranuleCountProvider packetGranuleCountProvider)
         {
             long pIndex = _pageEndGranules.Count;
-            long firstDataPage = _reader.FirstDataPageIndex;
+            long firstDataPage = Math.Max(_reader.FirstDataPageIndex, 0);
 
             while (pIndex < firstDataPage)
             {
@@ -223,33 +223,43 @@ namespace NVorbis.Ogg
                 }
 
                 long pageLength = 0;
+                int firstRealPacket = 0;
 
                 long prevPageIndex = pIndex - 1;
-                if (!_reader.GetPage(
-                    prevPageIndex, out _, out _, out _, out bool isContinued, out ushort packetCount, out _))
+                if (prevPageIndex >= 0)
                 {
-                    ThrowMissingPrecedingPageException();
+                    if (!_reader.GetPage(
+                        prevPageIndex, out _, out _, out _, out bool prevIsContinued, out ushort prevPacketCount, out _))
+                    {
+                        ThrowMissingPrecedingPageException();
+                    }
+
+                    if (prevIsContinued)
+                    {
+                        int lastPacketIndex = prevPacketCount - 1;
+
+                        // This will either be a continued packet OR the last packet of the last page,
+                        // in both cases that's precisely the value we need.
+                        VorbisPacket lastPacket = CreateValidPacket(
+                            ref prevPageIndex, ref lastPacketIndex, false, prevIsContinued, prevPacketCount);
+
+                        int count = packetGranuleCountProvider.GetPacketGranuleCount(ref lastPacket);
+                        pageLength += count;
+
+                        firstRealPacket = 1;
+                    }
                 }
 
-                if (isContinued)
-                {
-                    int lastPacketIndex = packetCount - 1;
-
-                    // This will either be a continued packet OR the last packet of the last page,
-                    // in both cases that's precisely the value we need.
-                    VorbisPacket lastPacket = CreateValidPacket(
-                        ref prevPageIndex, ref lastPacketIndex, false, isContinued, packetCount);
-
-                    int count = packetGranuleCountProvider.GetPacketGranuleCount(ref lastPacket);
-                    pageLength += count;
-                }
-
-                int firstRealPacket = isContinued ? 1 : 0;
-
                 if (!_reader.GetPage(
-                    pIndex, out _, out bool isResync, out _, out isContinued, out packetCount, out _))
+                    pIndex, out _, out bool isResync, out _, out bool isContinued, out ushort packetCount, out _))
                 {
-                    ThrowMissingPageException();
+                    // GetPage can change whether a reader HasAllPages,
+                    // so avoid throwing for streams that do not have an end-of-stream flag.
+                    if (!_reader.HasAllPages)
+                    {
+                        ThrowMissingPageException();
+                    }
+                    break;
                 }
 
                 int packetIndex = firstRealPacket;

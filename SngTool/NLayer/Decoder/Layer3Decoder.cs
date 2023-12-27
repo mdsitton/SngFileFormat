@@ -582,11 +582,13 @@ namespace NLayer.Decoder
             if (_channels == 1 || StereoMode == StereoMode.LeftOnly || StereoMode == StereoMode.DownmixToMono)
             {
                 channelMapping[0] = 0;
+                channelMapping[1] = -1;
                 endChannel = 0;
             }
             else if (StereoMode == StereoMode.RightOnly)
             {
                 // this is correct... if there's only a single channel output, it goes in channel 0's buffer
+                channelMapping[0] = -1;
                 channelMapping[1] = 0;
                 startChannel = 1;
             }
@@ -953,11 +955,11 @@ namespace NLayer.Decoder
 
             // MPEG 2
             // 22.05 kHz
-            new int[] { 0, 4, 8, 12, 16, 20, 24, 30, 36, 44, 52, 62, 74, 90, 110, 134, 162, 196, 238, 288, 342, 418, 576 },
+            new int[] { 0, 6, 12, 18, 24, 30, 36, 44, 54, 66, 80, 96, 116, 140, 168, 200, 238, 284, 336, 396, 464, 522, 576 },
             // 24 kHz
-            new int[] { 0, 4, 8, 12, 16, 20, 24, 30, 36, 42, 50, 60, 72, 88, 106, 128, 156, 190, 230, 276, 330, 384, 576 },
+            new int[] { 0, 6, 12, 18, 24, 30, 36, 44, 54, 66, 80, 96, 114, 136, 162, 194, 232, 278, 330, 394, 464, 540, 576 },
             // 16 kHz
-            new int[] { 0, 4, 8, 12, 16, 20, 24, 30, 36, 44, 54, 66, 82, 102, 126, 156, 194, 240, 296, 364, 448, 550, 576 },
+            new int[] { 0, 6, 12, 18, 24, 30, 36, 44, 54, 66, 80, 96, 116, 140, 168, 200, 238, 284, 336, 396, 464, 522, 576 },
 
             // MPEG 2.5
             // 11.025 kHz
@@ -981,11 +983,11 @@ namespace NLayer.Decoder
 
             // MPEG 2
             // 22.05 kHz
-            new int[] { 0, 4, 8, 12, 16, 22, 30, 40, 52, 66, 84, 106, 136, 192 },
+            new int[] { 0, 4, 8, 12, 18, 24, 32, 42, 56, 74, 100, 132, 174, 192 },
             // 24 kHz
-            new int[] { 0, 4, 8, 12, 16, 22, 28, 38, 50, 64, 80, 100, 126, 192 },
+            new int[] { 0, 4, 8, 12, 18, 26, 36, 48, 62, 80, 104, 136, 180, 192 },
             // 16 kHz
-            new int[] { 0, 4, 8, 12, 16, 22, 30, 42, 58, 78, 104, 138, 180, 192 },
+            new int[] { 0, 4, 8, 12, 18, 26, 36, 48, 62, 80, 104, 134, 174, 192 },
 
             // MPEG 2.5
             // 11.025 kHz
@@ -1345,6 +1347,7 @@ namespace NLayer.Decoder
 
             // now we populate our buffer...
             Span<int> buffer = stackalloc int[54];
+            buffer.Clear();
 
             var k = 0;
             var blkCnt = _sfbBlockCntTab[blockNumber][blockTypeNumber];
@@ -1574,7 +1577,7 @@ namespace NLayer.Decoder
             // count1 section
             h = _count1TableSelect[gr][ch] + 32;
 
-            // - 3 to ensure that we never get out of range
+            // - 3 to ensure that we never get an out of range exception
             while (part3end > _bitRes.BitsRead && idx < SBLIMIT * SSLIMIT - 3)
             {
                 Huffman.Decode(_bitRes, h, out float x, out float y, out float v, out float w);

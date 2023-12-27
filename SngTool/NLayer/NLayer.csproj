@@ -1,14 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFrameworks>net5.0;net6.0;net7.0</TargetFrameworks>
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <Authors>Mark Heath, Andrew Ward, TechPizza</Authors>
-    <Version>1.13.0</Version>
-    <PackageLicenseUrl>https://github.com/TechPizzaDev/NLayer/blob/master/LICENSE</PackageLicenseUrl>
-    <PackageProjectUrl>https://github.com/TechPizzaDev/NLayer</PackageProjectUrl>
+    <Authors>Mark Heath, Andrew Ward</Authors>
+    <Version>1.15.0</Version>
+	<PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/naudio/NLayer</PackageProjectUrl>
     <Description>Fully Managed MPEG 1 &amp; 2 Decoder for Layers 1, 2, &amp; 3</Description>
     <PackageTags>audio csharp mp3</PackageTags>
     <Company />

@@ -10,9 +10,9 @@ namespace SongLib
 {
     public unsafe class PcmFileWriter : IDisposable
     {
-        public const ushort BitsPerSample = 16;
+        public const ushort BitsPerSample = 32;
         private const ushort ChannelSize = BitsPerSample / 8; // 8 bits per byte
-        public readonly ushort SampleRate;
+        public readonly int SampleRate;
         public readonly ushort Channels;
         public readonly long TotalSamples;
         public readonly long TotalSize;
@@ -27,7 +27,7 @@ namespace SongLib
             return totalSamples * ChannelSize;
         }
 
-        public PcmFileWriter(MemoryMappedFile file, ushort sampleRate, ushort channels, long totalSamples)
+        public PcmFileWriter(MemoryMappedFile file, int sampleRate, ushort channels, long totalSamples)
         {
             Channels = channels;
             TotalSamples = totalSamples;
@@ -88,9 +88,10 @@ namespace SongLib
             int pos = 0;
             for (int i = 0; i < sampleCount; i++)
             {
-                short intSample = (short)Math.Round(audioSamples[i] * short.MaxValue);
-                BinaryPrimitives.WriteInt16LittleEndian(wavDataSpan.Slice(pos, 2), intSample);
-                pos += 2;
+                // short intSample = (short)Math.Round(audioSamples[i] * short.MaxValue);
+                // BinaryPrimitives.WriteInt16LittleEndian(wavDataSpan.Slice(pos, 2), intSample);
+                BinaryPrimitives.WriteSingleLittleEndian(wavDataSpan.Slice(pos, 4), audioSamples[i]);
+                pos += 4;
             }
             writePos += pos;
             SamplesWritten += (uint)sampleCount;

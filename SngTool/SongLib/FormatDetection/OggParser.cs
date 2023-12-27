@@ -46,7 +46,6 @@ public static class OggParser
         try
         {
             var isOgg = IsOggFile(stream);
-            Console.WriteLine($"Is ogg: {isOgg} {format} {fileName}");
             if (isOgg)
             {
                 var version = stream.ReadByte();
@@ -67,7 +66,6 @@ public static class OggParser
                     totalPageLength += segmentLengthTable[i];
                 }
 
-
                 if (format == OggEncoding.Vorbis)
                 {
                     var packType = stream.ReadByte();
@@ -76,7 +74,6 @@ public static class OggParser
 
                     Span<byte> vorbisIdBytes = stackalloc byte[6];
                     stream.ReadCountLE(vorbisIdBytes);
-                    Console.WriteLine($"Is vorbis: {vorbisIdBytes.SequenceEqual(vorbisBytes)} {Encoding.ASCII.GetString(vorbisIdBytes)} {fileName}");
 
                     return vorbisIdBytes.SequenceEqual(vorbisBytes);
                 }

@@ -61,7 +61,7 @@ namespace NVorbis
                 _bitrev = new ushort[_n8];
                 for (int i = 0; i < _n8; ++i)
                 {
-                    _bitrev[i] = (ushort)(Utils.BitReverse((uint)i, _ld - 3) << 2);
+                    _bitrev[i] = (ushort) (Utils.BitReverse((uint) i, _ld - 3) << 2);
                 }
             }
 
@@ -69,19 +69,13 @@ namespace NVorbis
             {
                 fixed (float* bufferPtr = buffer)
                 fixed (float* buf2Ptr = buf2)
-                fixed (float* aa = _a)
                 {
-                    CalcReverse(bufferPtr, buf2Ptr, aa);
+                    CalcReverse(bufferPtr, buf2Ptr);
                 }
             }
 
-            private void CalcReverse(float* buffer, float* buf2, float* A)
+            private void CalcReverse(float* buffer, float* buf2)
             {
-                int n = _n;
-                int n2 = n >> 1;
-                int n4 = n2 >> 1;
-                int n8 = n4 >> 1;
-
                 // IMDCT algorithm from "The use of multirate filter banks for coding of high quality digital audio"
                 // See notes about bugs in that paper in less-optimal implementation 'inverse_mdct_old' after this function.
 
@@ -101,7 +95,10 @@ namespace NVorbis
                 // this propagates through linearly to the end, where the numbers
                 // are 1/2 too small, and need to be compensated for.
 
+                void Step0(float* A)
                 {
+                    int n2 = _n >> 1;
+
                     float* d = &buf2[n2 - 2];   // buf2
                     float* AA = A;              // A
                     float* e = &buffer[0];      // buffer
@@ -126,6 +123,10 @@ namespace NVorbis
                         e -= 4;
                     }
                 }
+                fixed (float* aa = _a)
+                {
+                    Step0(aa);
+                }
 
                 // now we use symbolic names for these, so that we can
                 // possibly swap their meaning as we change which operations
@@ -136,7 +137,10 @@ namespace NVorbis
                 // step 2    (paper output is w, now u)
                 // this could be in place, but the data ends up in the wrong
                 // place... _somebody_'s got to swap it, so this is nominated
+                void Step2(float* A)
                 {
+                    int n2 = _n >> 1;
+                    int n4 = _n >> 2;
 
                     float* AA = &A[n2 - 8];   // A
 
@@ -172,70 +176,88 @@ namespace NVorbis
                         e1 += 4;
                     }
                 }
-
-                // step 3
-                int ld = _ld;
-
-                // optimized step 3:
-
-                // the original step3 loop can be nested r inside s or s inside r;
-                // it's written originally as s inside r, but this is dumb when r
-                // iterates many times, and s few. So I have two copies of it and
-                // switch between them halfway.
-
-                // this is iteration 0 of step 3
-                step3_iter0_loop(n >> 4, u, n2 - 1 - n4 * 0, -(n >> 3), A);
-                step3_iter0_loop(n >> 4, u, n2 - 1 - n4 * 1, -(n >> 3), A);
-
-                // this is iteration 1 of step 3
-                step3_inner_r_loop(n >> 5, u, n2 - 1 - n8 * 0, -(n >> 4), A, 16);
-                step3_inner_r_loop(n >> 5, u, n2 - 1 - n8 * 1, -(n >> 4), A, 16);
-                step3_inner_r_loop(n >> 5, u, n2 - 1 - n8 * 2, -(n >> 4), A, 16);
-                step3_inner_r_loop(n >> 5, u, n2 - 1 - n8 * 3, -(n >> 4), A, 16);
-
-                int l = 2;
-                for (; l < (ld - 3) >> 1; ++l)
+                fixed (float* aa = _a)
                 {
-                    int k0 = n >> (l + 2);
-                    int k0_2 = k0 >> 1;
-                    int lim = 1 << (l + 1);
-                    for (int i = 0; i < lim; ++i)
-                    {
-                        step3_inner_r_loop(n >> (l + 4), u, n2 - 1 - k0 * i, -k0_2, A, 1 << (l + 3));
-                    }
+                    Step2(aa);
                 }
 
-                for (; l < ld - 6; ++l)
+                void Step3(float* A)
                 {
-                    int k0 = n >> (l + 2);
-                    int k1 = 1 << (l + 3);
-                    int k0_2 = k0 >> 1;
-                    int rlim = n >> (l + 6), r;
-                    int lim = 1 << (l + 1);
-                    float* A0 = A;
-                    int i_off = n2 - 1;
-                    for (r = rlim; r > 0; --r)
-                    {
-                        step3_inner_s_loop(lim, u, i_off, -k0_2, A0, k1, k0);
-                        A0 += k1 * 4;
-                        i_off -= 8;
-                    }
-                }
+                    int n = _n;
+                    int n2 = n >> 1;
+                    int n4 = n >> 2;
+                    int n8 = n >> 3;
 
-                // iterations with count:
-                //   ld-6,-5,-4 all interleaved together
-                //       the big win comes from getting rid of needless flops
-                //         due to the constants on pass 5 & 4 being all 1 and 0;
-                //       combining them to be simultaneous to improve cache made little difference
-                step3_inner_s_loop_ld654(n >> 5, u, n2 - 1, A, n);
+                    // step 3
+                    int ld = _ld;
+
+                    // optimized step 3:
+
+                    // the original step3 loop can be nested r inside s or s inside r;
+                    // it's written originally as s inside r, but this is dumb when r
+                    // iterates many times, and s few. So I have two copies of it and
+                    // switch between them halfway.
+
+                    // this is iteration 0 of step 3
+                    step3_iter0_loop(n >> 4, u, n2 - 1 - n4 * 0, -(n >> 3), A);
+                    step3_iter0_loop(n >> 4, u, n2 - 1 - n4 * 1, -(n >> 3), A);
+
+                    // this is iteration 1 of step 3
+                    step3_inner_r_loop(n >> 5, u, n2 - 1 - n8 * 0, -(n >> 4), A, 16);
+                    step3_inner_r_loop(n >> 5, u, n2 - 1 - n8 * 1, -(n >> 4), A, 16);
+                    step3_inner_r_loop(n >> 5, u, n2 - 1 - n8 * 2, -(n >> 4), A, 16);
+                    step3_inner_r_loop(n >> 5, u, n2 - 1 - n8 * 3, -(n >> 4), A, 16);
+
+                    int l = 2;
+                    for (; l < (ld - 3) >> 1; ++l)
+                    {
+                        int k0 = n >> (l + 2);
+                        int k0_2 = k0 >> 1;
+                        int lim = 1 << (l + 1);
+                        for (int i = 0; i < lim; ++i)
+                        {
+                            step3_inner_r_loop(n >> (l + 4), u, n2 - 1 - k0 * i, -k0_2, A, 1 << (l + 3));
+                        }
+                    }
+
+                    for (; l < ld - 6; ++l)
+                    {
+                        int k0 = n >> (l + 2);
+                        int k1 = 1 << (l + 3);
+                        int k0_2 = k0 >> 1;
+                        int rlim = n >> (l + 6), r;
+                        int lim = 1 << (l + 1);
+                        float* A0 = A;
+                        int i_off = n2 - 1;
+                        for (r = rlim; r > 0; --r)
+                        {
+                            step3_inner_s_loop(lim, u, i_off, -k0_2, A0, k1, k0);
+                            A0 += k1 * 4;
+                            i_off -= 8;
+                        }
+                    }
+
+                    // iterations with count:
+                    //   ld-6,-5,-4 all interleaved together
+                    //       the big win comes from getting rid of needless flops
+                    //         due to the constants on pass 5 & 4 being all 1 and 0;
+                    //       combining them to be simultaneous to improve cache made little difference
+                    step3_inner_s_loop_ld654(n >> 5, u, n2 - 1, A, n);
+                }
+                fixed (float* aa = _a)
+                {
+                    Step3(aa);
+                }
 
                 // output is u
 
                 // step 4, 5, and 6
                 // cannot be in-place because of step 5
-                fixed (ushort* bit_reverse = _bitrev)
+                void Step4_5_6(ushort* bitrev)
                 {
-                    ushort* bitrev = bit_reverse;
+                    int n2 = _n >> 1;
+                    int n4 = _n >> 2;
+
                     // weirdly, I'd have thought reading sequentially and writing
                     // erratically would have been better than vice-versa, but in
                     // fact that's not what my testing showed. (That is, with
@@ -264,6 +286,11 @@ namespace NVorbis
                         bitrev += 2;
                     }
                 }
+                fixed (ushort* bit_reverse = _bitrev)
+                {
+                    Step4_5_6(bit_reverse);
+                }
+
                 // (paper output is u, now v)
 
 
@@ -272,9 +299,9 @@ namespace NVorbis
 
                 // step 7   (paper output is v, now v)
                 // this is now in place
-                fixed (float* cc = _c)
+                void Step7(float* C)
                 {
-                    float* C = cc;
+                    int n2 = _n >> 1;
 
                     float* d = v;
                     float* e = v + n2 - 4;
@@ -316,6 +343,10 @@ namespace NVorbis
                         e -= 4;
                     }
                 }
+                fixed (float* cc = _c)
+                {
+                    Step7(cc);
+                }
 
                 // data must be in buf2
 
@@ -326,8 +357,11 @@ namespace NVorbis
                 // to make another pass later
 
                 // this cannot POSSIBLY be in place, so we refer to the buffers directly
-                fixed (float* bb = _b)
+                void Step8(float* bb)
                 {
+                    int n = _n;
+                    int n2 = n >> 1;
+
                     float* B = bb + n2 - 8;
                     float* e = buf2 + n2 - 8;
                     float* d0 = &buffer[0];
@@ -377,6 +411,10 @@ namespace NVorbis
                         d1 -= 4;
                         d3 -= 4;
                     }
+                }
+                fixed (float* bb = _b)
+                {
+                    Step8(bb);
                 }
             }
 

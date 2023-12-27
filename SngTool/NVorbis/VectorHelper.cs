@@ -16,14 +16,16 @@ namespace NVorbis
             return Unsafe.ReadUnaligned<Vector<T>>(ref address);
         }
 
+#if !NET8_0_OR_GREATER
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void StoreUnsafe<T>(this Vector<T> source, ref T destination, int elementOffset)
+        public static void StoreUnsafe<T>(this Vector<T> source, ref T destination, nuint elementOffset)
             where T : struct
         {
             ThrowForUnsupportedNumericsVectorBaseType<T>();
             ref byte address = ref Unsafe.As<T, byte>(ref Unsafe.Add(ref destination, elementOffset));
             Unsafe.WriteUnaligned(ref address, source);
         }
+#endif
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static void ThrowForUnsupportedNumericsVectorBaseType<T>()

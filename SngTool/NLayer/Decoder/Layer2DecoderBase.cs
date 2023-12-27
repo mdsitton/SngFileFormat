@@ -26,12 +26,11 @@ namespace NLayer.Decoder
             var subbandCount = rateTable.Length;
             var jsbound = subbandCount;
             if (frame.ChannelMode == MpegChannelMode.JointStereo)
-                jsbound = frame.ChannelModeExtension * 4 + 4;
+                jsbound = Math.Min(subbandCount, frame.ChannelModeExtension * 4 + 4);
 
             // read the full stereo subbands
             var channels = frame.ChannelMode == MpegChannelMode.Mono ? 1 : 2;
-            var sb = 0;
-            for (; sb < jsbound; sb++)
+            for (var sb = 0; sb < jsbound; sb++)
             {
                 var bits = allocLookupTable[rateTable[sb]][0];
                 for (int ch = 0; ch < channels; ch++)
@@ -45,7 +44,7 @@ namespace NLayer.Decoder
             }
 
             // read the intensity stereo subbands
-            for (; sb < subbandCount; sb++)
+            for (var sb = 0; sb < subbandCount; sb++)
             {
                 var bits = allocLookupTable[rateTable[sb]][0];
 
