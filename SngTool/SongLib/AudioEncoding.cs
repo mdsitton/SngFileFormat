@@ -127,10 +127,10 @@ namespace SongLib
                     return (Path.GetFileName(filePath), null);
                 }
                 long totalSamples = vorbis.TotalSamples * vorbis.Channels;
-                long fileSize = PcmFileWriter.CalculateSizeEstimate(totalSamples);
+                long fileSize = WavFileWriter.CalculateSizeEstimate(totalSamples);
 
                 using (var mmf = MemoryMappedFile.CreateNew(null, fileSize))
-                using (var writer = new PcmFileWriter(mmf, vorbis.SampleRate, (ushort)vorbis.Channels, totalSamples))
+                using (var writer = new WavFileWriter(mmf, vorbis.SampleRate, (ushort)vorbis.Channels, totalSamples))
                 {
                     int chunkSize = (int)Math.Min(totalSamples, writer.MaxChunkSamples);
                     float[] samples = new float[chunkSize];
@@ -148,7 +148,7 @@ namespace SongLib
                     }
 
                     var name = Path.GetFileName(filePath);
-                    return (Path.ChangeExtension(name, ".opus"), await EncodePcmToOpus(writer, bitRate));
+                    return (Path.ChangeExtension(name, ".opus"), await EncodeMappedFileToOpus(mmf, bitRate));
                 }
             }
         }
@@ -173,7 +173,7 @@ namespace SongLib
             {
                 var totalSamples = mp3.Length!.Value;
 
-                var fileSize = PcmFileWriter.CalculateSizeEstimate(totalSamples);
+                var fileSize = WavFileWriter.CalculateSizeEstimate(totalSamples);
 
                 if (totalSamples == 0)
                 {
@@ -182,7 +182,7 @@ namespace SongLib
                 }
 
                 using (var mmf = MemoryMappedFile.CreateNew(null, fileSize))
-                using (var writer = new PcmFileWriter(mmf, (ushort)mp3.SampleRate, (ushort)mp3.Channels, totalSamples))
+                using (var writer = new WavFileWriter(mmf, (ushort)mp3.SampleRate, (ushort)mp3.Channels, totalSamples))
                 {
                     int chunkSize = (int)Math.Min(totalSamples, writer.MaxChunkSamples);
                     float[] samples = new float[chunkSize];
@@ -198,7 +198,7 @@ namespace SongLib
                         writer.IngestSamples(samples.AsSpan(0, count));
                     }
                     var name = Path.GetFileName(filePath);
-                    return (Path.ChangeExtension(name, ".opus"), await EncodePcmToOpus(writer, bitRate));
+                    return (Path.ChangeExtension(name, ".opus"), await EncodeMappedFileToOpus(mmf, bitRate));
                 }
 
             }
@@ -309,12 +309,12 @@ namespace SongLib
         }
 
         /// <summary>
-        /// Encode opus file from <see cref="PcmFileWriter">
+        /// Encode opus file from <see cref="MemoryMappedFile" data>
         /// </summary>
-        private async static Task<NativeByteArray?> EncodePcmToOpus(PcmFileWriter file, int bitRate)
+        private async static Task<NativeByteArray?> EncodeMappedFileToOpus(MemoryMappedFile inputData, int bitRate)
         {
-            var args = $"--vbr --framesize 60 --bitrate {bitRate} --discard-pictures --discard-comments --raw-float --raw-bits {PcmFileWriter.BitsPerSample} --raw-rate {file.SampleRate} --raw-chan {file.Channels} - -";
-            return await RunAudioProcess("opusenc", args, file.mappedFile, verbose);
+            var args = $"--vbr --framesize 60 --bitrate {bitRate} --discard-pictures --discard-comments - -";
+            return await RunAudioProcess("opusenc", args, inputData, verbose);
         }
 
         /// <summary>
@@ -322,10 +322,9 @@ namespace SongLib
         /// </summary>
         private async static Task<(string filename, NativeByteArray? data)> EncodeFileToOpus(string filePath, MemoryMappedFile inputData, int bitRate)
         {
-            var args = $"--vbr --framesize 60 --bitrate {bitRate} --discard-pictures --discard-comments - -";
-            var encodeData = await RunAudioProcess("opusenc", args, inputData, verbose);
-
             var fileName = Path.GetFileName(filePath);
+
+            var encodeData = await EncodeMappedFileToOpus(inputData, bitRate);
 
             if (encodeData == null)
             {
