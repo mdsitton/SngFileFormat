@@ -6,10 +6,11 @@ using BinaryEx;
 
 public class WavParser
 {
-    private const int HeaderSize = 44;
+    private const int HeaderSize = 44 + 40; // header size plus extra for junk sections
     private const string RiffIdentifier = "RIFF";
     private const string WaveIdentifier = "WAVE";
     private const string FmtIdentifier = "fmt ";
+    private const string JunkIdentifier = "JUNK";
 
     public static bool IsWav(Stream stream, string filePath)
     {
@@ -44,13 +45,25 @@ public class WavParser
                 return false;
             }
 
-            // Parse the fmt chunk
             Span<byte> fmtIdentifierBytes = stackalloc byte[FmtIdentifier.Length];
             Encoding.ASCII.GetBytes(FmtIdentifier, fmtIdentifierBytes);
 
+            Span<byte> junkIdentifierBytes = stackalloc byte[FmtIdentifier.Length];
+            Encoding.ASCII.GetBytes(JunkIdentifier, junkIdentifierBytes);
+
             Span<byte> fmtIdBytes = stackalloc byte[FmtIdentifier.Length];
             header.ReadCountLE(ref pos, fmtIdBytes);
-            if (!fmtIdentifierBytes.SequenceEqual(fmtIdBytes))
+
+            if (fmtIdBytes.SequenceEqual(junkIdentifierBytes))
+            {
+                // Skip the junk chunk
+                int junkChunkSize = header.ReadInt32LE(ref pos);
+                pos += junkChunkSize;
+                header.ReadCountLE(ref pos, fmtIdBytes);
+            }
+
+            // Parse the fmt chunk
+            if (!fmtIdBytes.SequenceEqual(fmtIdentifierBytes))
             {
                 return false;
             }
