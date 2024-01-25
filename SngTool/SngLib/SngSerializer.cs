@@ -166,7 +166,9 @@ namespace SngLib
 
             // Read file metadata
             ulong fileIndexLen = fs.ReadUInt64LE();
+            EnsureValidLength(fs, fileIndexLen);
             ulong fileCount = fs.ReadUInt64LE();
+            EnsureValidLength(fs, fileCount);
             var fileInfo = new (ulong index, ulong size, string fileName)[fileCount];
             for (ulong i = 0; i < fileCount; i++)
             {
