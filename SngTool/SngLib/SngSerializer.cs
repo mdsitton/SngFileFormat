@@ -107,6 +107,14 @@ namespace SngLib
             }
         }
 
+        private static void EnsureValidLength(Stream data, ulong length)
+        {
+            if ((ulong)data.Length < length)
+            {
+                throw new FormatException("File data size does not match expected file size. This is likely an ancient sng file that is no longer supported. Please report this SNG file wherever it came from.");
+            }
+        }
+
         public static SngFile LoadSngFile(string path)
         {
             using var fs = new FileStream(path, FileMode.Open, FileAccess.Read);
@@ -130,6 +138,7 @@ namespace SngLib
 
             // Read metadata
             ulong metadataLen = fs.ReadUInt64LE();
+            EnsureValidLength(fs, metadataLen);
             ulong metadataCount = fs.ReadUInt64LE();
             for (ulong i = 0; i < metadataCount; i++)
             {
@@ -138,13 +147,16 @@ namespace SngLib
                 {
                     throw new FormatException("Metadata Key length value cannot be negative");
                 }
+
+                EnsureValidLength(fs, (ulong)keyLen);
                 var keyBytes = new byte[keyLen];
                 fs.Read(keyBytes);
                 string key = Encoding.UTF8.GetString(keyBytes);
                 int valueLen = fs.ReadInt32LE();
+                EnsureValidLength(fs, (ulong)valueLen);
                 if (valueLen < 0)
                 {
-                    throw new FormatException("Metadata value length value cannot be negative");
+                    throw new FormatException("Metadata Value length value cannot be negative");
                 }
                 var valueBytes = new byte[valueLen];
                 fs.Read(valueBytes);
@@ -168,9 +180,13 @@ namespace SngLib
 
                 string fileName = Encoding.UTF8.GetString(fileNameBytes);
                 ulong contentsLen = fs.ReadUInt64LE();
+                EnsureValidLength(fs, contentsLen);
                 ulong contentsIndex = fs.ReadUInt64LE();
+                EnsureValidLength(fs, contentsIndex);
                 fileInfo[i] = (contentsIndex, contentsLen, fileName);
             }
+            var filesBytes = fs.ReadUInt64LE(); // file section length
+            EnsureValidLength(fs, (ulong)fs.Position + filesBytes);
 
             foreach ((ulong pos, ulong size, string name) in fileInfo)
             {
@@ -300,7 +316,7 @@ namespace SngLib
             foreach ((string key, NativeByteArray? value) in sngFile.Files)
             {
                 if (value == null)
-                    continue; ;
+                    continue;
 
                 byte[] fileNameBytes = Encoding.UTF8.GetBytes(key);
                 byte filenameLength = (byte)fileNameBytes.Length;
