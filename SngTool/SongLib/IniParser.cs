@@ -46,6 +46,12 @@ namespace SongLib
                         fileContent = fileContent.Slice(endOfLineIndex + 1);
                     }
 
+                    int commentIndex = line.IndexOfAny('#', ';');
+                    if (commentIndex >= 0)
+                    {
+                        line = line.Slice(0, commentIndex);
+                    }
+
                     if (line.IsEmpty)
                     {
                         continue;
