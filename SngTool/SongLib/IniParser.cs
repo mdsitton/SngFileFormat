@@ -108,6 +108,8 @@ namespace SongLib
                             continue;
                         writer.WriteLine($"{keyValue.Key} = {keyValue.Value}");
                     }
+
+                    writer.WriteLine();
                 }
             }
         }
