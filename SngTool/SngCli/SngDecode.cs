@@ -81,14 +81,21 @@ namespace SngCli
                 return;
             }
 
+            var songs = FindAllSngFiles(conf.InputPath!);
+            if (songs.Length == 0)
+            {
+                ConMan.Out($"No valid songs found at: {conf.InputPath!}");
+                Environment.Exit(1);
+                return;
+            }
+
             if (conf.StatusBar)
             {
                 ConMan.EnableProgress(1);
             }
-            var songs = FindAllSngFiles(conf.InputPath!);
+
             ConMan.ProgressItems = songs.Length;
-
-
+            ConMan.Out($"Song count: {songs.Length}");
             await Utils.ForEachAsync(songs, async (sngFile, token) =>
             {
                 try
