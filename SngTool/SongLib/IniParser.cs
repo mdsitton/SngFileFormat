@@ -106,7 +106,7 @@ namespace SongLib
                         // skip empty fields
                         if (string.IsNullOrEmpty(keyValue.Value))
                             continue;
-                        writer.WriteLine($"{keyValue.Key}={keyValue.Value}");
+                        writer.WriteLine($"{keyValue.Key} = {keyValue.Value}");
                     }
                 }
             }
