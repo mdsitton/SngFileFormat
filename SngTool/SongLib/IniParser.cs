@@ -1,6 +1,7 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Text;
 
@@ -111,17 +112,14 @@ namespace SongLib
             }
         }
 
-        private IReadOnlyDictionary<string, string> emptyDict = new Dictionary<string, string>();
-
         // handle making section names case-insensitive as some charts use cased section names
-        public bool TryGetSection(string sectionName, out IReadOnlyDictionary<string, string> section)
+        public bool TryGetSection(string sectionName, [NotNullWhen(true)] out Dictionary<string, string>? section)
         {
-            section = emptyDict;
             if (!sections.TryGetValue(sectionName, out var value))
             {
-
                 if (!sections.TryGetValue(sectionName.ToLowerInvariant(), out value))
                 {
+                    section = null;
                     return false;
                 }
                 else
