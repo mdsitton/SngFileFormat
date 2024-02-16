@@ -102,22 +102,8 @@ These is the required ordering of each of these components:
 | Field             | Data Type      | Size            | Description                                     |
 | ----------------- | -------------- | --------------- | ----------------------------------------------- |
 | metadataLen       | uint64         | 8               | Number of bytes in the section after this field |
-| metadataCount     | uint64         | 8               | Number of metadata sections                     |
-| metadataPairArray | MetadataPair[] | metadataLen - 8 | Array of metadataPair sections                  |
-
-### `FileIndex`
-| Field         | Data Type  | Size            | Description                                     |
-| ------------- | ---------- | --------------- | ----------------------------------------------- |
-| fileMetaLen   | uint64     | 8               | Number of bytes in the section after this field |
-| fileCount     | uint64     | 8               | Number of file and fileMeta sections            |
-| fileMetaArray | FileMeta[] | fileMetaLen - 8 | Array of fileMeta sections                      |
-
-### `FileData`
-| Field         | Data Type | Size        | Description                            |
-| ------------- | --------- | ----------- | -------------------------------------- |
-| fileDataLen   | uint64    | 8           | Total length in bytes of all file data |
-| fileDataArray | File[]    | fileDataLen | Concatenated file sections             |
-
+| metadataCount     | uint64         | 8               | Number of MetadataPair sections                 |
+| metadataPairArray | MetadataPair[] | metadataLen - 8 | Array of MetadataPair sections                  |
 
 ### `MetadataPair` (represents a single metadata string key/value pair)
 | Field    | Data Type | Size     | Description                              |
@@ -127,6 +113,12 @@ These is the required ordering of each of these components:
 | valueLen | int32     | 4        | The number of bytes in the value         |
 | value    | string    | valueLen | The metadata's value                     |
 
+### `FileIndex`
+| Field         | Data Type  | Size            | Description                                     |
+| ------------- | ---------- | --------------- | ----------------------------------------------- |
+| fileMetaLen   | uint64     | 8               | Number of bytes in the section after this field |
+| fileCount     | uint64     | 8               | Number of FileMeta (and FileData) sections      |
+| fileMetaArray | FileMeta[] | fileMetaLen - 8 | Array of FileMeta sections                      |
 
 ### `FileMeta` (contains the file index metadata for each `File` section)
 | Field         | Data Type | Size        | Description                                                                                 |
@@ -136,6 +128,11 @@ These is the required ordering of each of these components:
 | contentsLen   | uint64    | 8           | The number of bytes in the file's contents                                                  |
 | contentsIndex | uint64    | 8           | The first byte index from the start of the file of the corresponding file section           |
 
+### `FileData`
+| Field         | Data Type | Size        | Description                            |
+| ------------- | --------- | ----------- | -------------------------------------- |
+| fileDataLen   | uint64    | 8           | Total length in bytes of all file data |
+| fileDataArray | File[]    | fileDataLen | Concatenated file sections             |
 
 ### `File` (contains the binary contents of a single file)
 | Field           | Data Type    | Size        | Description                       |
@@ -168,7 +165,7 @@ Some characters in metadata strings have restrictions to simplify serialization 
 
 ## Metadata values:
 
-Metadata values are strings but are intended to be represented by a number of specific formats. Applications can utilize their own formats for metadata values as they wish these are intended to provide a baseline of common types that should stay consistent between all applications.
+Metadata values are strings, but some are intended to be string representations of specific data types. Applications must decide how to parse the data type from the string. The following are a baseline of common types that should stay consistent between all applications:
 
 ### bool
 
@@ -244,7 +241,7 @@ There are also some limitations to what is allowed for file names to prevent iss
 ## Design Decisions
 - The primary advantage of using a format like this is that it enables streaming audio data from the container without having to load the entire file into memory, thanks to the use of memory-mapped files. Since no compression is applied, the file offsets remain static, which simplifies reading data from the file.
   - In comparison, other projects often employ formats based on ZIP files. Although it's possible to seek within a ZIP file during runtime, the data typically needs to be decompressed and loaded into memory. In C#, this imposes a limit of 2GB of data per audio file. Additionally, because audio data is generally already compressed, using ZIP files introduces unnecessary overhead that slows down the process of loading audio. By opting for a format that does not rely on compression, these limitations can be avoided, allowing for more efficient streaming and access to audio data.
-- The metadata is versatile and not confined to any particular  application. It can encompass a multitude of properties, including those specific to individual applications. To prevent inadvertent property  clashes among data from different applications, a metadata keys registry is also included in this repository. Metadata should be limited to what can be serialized into an INI file, as it must be capable of  round-tripping to and from a song.ini file. For more complex metadata  requiring additional data blobs, they should be managed as a separate  file within the container.
+- The metadata is versatile and not confined to any particular application. It can encompass a multitude of properties, including those specific to individual applications. To prevent inadvertent property clashes among data from different applications, a metadata keys registry is also included in this repository. Metadata should be limited to what can be serialized into an INI file, as it must be capable of round-tripping to and from a song.ini file. For more complex metadata requiring additional data blobs, they should be managed as a separate file within the container.
 - `.sng` is designed to be able to contain the binary contents of any set of files.
 - File binaries are placed at the end of the format, and sections have lengths to allow programs to efficiently scan only the `.sng`'s `metadata` or `fileMeta` sections whichever may be required.
 - The format has lengths defined in each major section to allow easily skipping over data that may not be required during parsing.
@@ -254,7 +251,7 @@ There are also some limitations to what is allowed for file names to prevent iss
 
 ## Registry
 
-The registry is intended to be a helpful tool for anyone utilizing the format, participation ensures that other will not inadvertently use conflicting metadata keys. It is not required to register keys with the registry but it is in your best interest as an application developer to do so.
+The registry is intended to be a helpful tool for anyone utilizing the format, participation ensures that others will not inadvertently use conflicting metadata keys. It is not required to register keys with the registry but it is in your best interest as an application developer to do so.
 
 To submit a new entry for the registry submit a pull request to add any keys that your application may be making use of along with the recommended data type for this value. We recommend using a application prefix if it is something very specific to your application, however if it is a more general usage metadata value not including a prefix would make sense.
 
@@ -296,6 +293,4 @@ Additionally filenames can contain folders within the song seperated by the '/' 
 - `song.{mp3,ogg,opus,wav}`
 - `crowd.{mp3,ogg,opus,wav}`
 - `preview.{mp3,ogg,opus,wav}`
-
-
 
