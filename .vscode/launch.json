@@ -22,7 +22,7 @@
                 "--out",
                 "C:\\bad-inf-enc\\"
             ],
-            "cwd": "${workspaceFolder}/SngTool/SngCli",
+            "cwd": "${workspaceFolder}/SngTool/SngCli/bin/Debug/net7.0/win-x64/",
             // For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
             "console": "integratedTerminal",
             "stopAtEntry": false

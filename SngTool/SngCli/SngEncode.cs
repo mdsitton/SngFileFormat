@@ -203,139 +203,25 @@ namespace SngCli
             {
                 return false;
             }
-            // Manually parse the types of known keys so that we know they are correct
+
             IniFile iniFile = new IniFile();
             iniFile.Load(iniPath);
-            if (iniFile.IsSection("song"))
-            {
-                var name = iniFile.GetString("song", "name", "");
-                var artist = iniFile.GetString("song", "artist", "");
-                var album = iniFile.GetString("song", "album", "");
-                var genre = iniFile.GetString("song", "genre", "");
-                var year = iniFile.GetString("song", "year", "");
-                var bandDiff = iniFile.GetInt("song", "diff_band", -1);
-                var guitarDiff = iniFile.GetInt("song", "diff_guitar", -1);
-                var rhythmDiff = iniFile.GetInt("song", "diff_rhythm", -1);
-                var guitarCoopDiff = iniFile.GetInt("song", "diff_guitar_coop", -1);
-                var bassDiff = iniFile.GetInt("song", "diff_bass", -1);
-                var drumsDiff = iniFile.GetInt("song", "diff_drums", -1);
-                var proDrumsDiff = iniFile.GetInt("song", "diff_drums_real", -1);
-                var keysDiff = iniFile.GetInt("song", "diff_keys", -1);
-                var gHLGuitarDiff = iniFile.GetInt("song", "diff_guitarghl", -1);
-                var gHLBassDiff = iniFile.GetInt("song", "diff_bassghl", -1);
-                var gHLGuitarCoopDiff = iniFile.GetInt("song", "diff_guitar_coop_ghl", -1);
-                var gHLRhythmDiff = iniFile.GetInt("song", "diff_rhythm_ghl", -1);
-                var previewStart = iniFile.GetInt("song", "preview_start_time", -1);
-                var iconName = iniFile.GetString("song", "icon", "").ToLowerInvariant();
-                var playlistTrack = iniFile.GetInt("song", "playlist_track", 16000);
-                var modchart = iniFile.GetBool("song", "modchart", false);
-                var songLength = iniFile.GetInt("song", "song_length", 0);
-                var forceProDrums = iniFile.GetBool("song", "pro_drums", false);
-                var forceFiveLane = iniFile.GetBool("song", "five_lane_drums", false);
-                var topLevelPlaylist = iniFile.GetString("song", "playlist", "").ToLowerInvariant();
-                var subPlaylist = iniFile.GetString("song", "sub_playlist", "").ToLowerInvariant();
-
-                int albumTrack;
-                if (iniFile.IsKey("song", "album_track"))
-                    albumTrack = iniFile.GetInt("song", "album_track", 16000);
-                else
-                    albumTrack = iniFile.GetInt("song", "track", 16000);
-
-                var charter = iniFile.GetString("song", iniFile.IsKey("song", "charter") ? "charter" : "frets", "");
-
-                var customHOPO = iniFile.GetInt("song", "hopo_frequency", 0);
-                var isEighthHOPO = iniFile.GetBool("song", "eighthnote_hopo", false);
-                var multiplierNote = iniFile.GetInt("song", "multiplier_note", 0);
-                var offset = iniFile.GetInt("song", "delay", 0);
-                var videoStart = iniFile.GetInt("song", "video_start_time", 0);
-                var endEventsEnabled = iniFile.GetBool("song", "end_events", true);
-                var loadingPhrase = iniFile.GetString("song", "loading_phrase", "");
-
-                // Save metadata to sng file
-                sngFile.SetString("name", name);
-                sngFile.SetString("artist", artist);
-                sngFile.SetString("album", album);
-                sngFile.SetString("genre", genre);
-                sngFile.SetString("year", year);
-                sngFile.SetInt("diff_band", bandDiff);
-                sngFile.SetInt("diff_guitar", guitarDiff);
-                sngFile.SetInt("diff_rhythm", rhythmDiff);
-                sngFile.SetInt("diff_guitar_coop", guitarCoopDiff);
-                sngFile.SetInt("diff_bass", bassDiff);
-                sngFile.SetInt("diff_drums", drumsDiff);
-                sngFile.SetInt("diff_drums_real", proDrumsDiff);
-                sngFile.SetInt("diff_keys", keysDiff);
-                sngFile.SetInt("diff_guitarghl", gHLGuitarDiff);
-                sngFile.SetInt("diff_bassghl", gHLBassDiff);
-                sngFile.SetInt("diff_guitar_coop_ghl", gHLGuitarCoopDiff);
-                sngFile.SetInt("diff_rhythm_ghl", gHLRhythmDiff);
-                sngFile.SetInt("preview_start_time", previewStart);
-                sngFile.SetString("icon", iconName);
-                sngFile.SetInt("playlist_track", playlistTrack);
-                sngFile.SetBool("modchart", modchart);
-                sngFile.SetInt("song_length", songLength);
-                sngFile.SetBool("pro_drums", forceProDrums);
-                sngFile.SetBool("five_lane_drums", forceFiveLane);
-                sngFile.SetString("playlist", topLevelPlaylist);
-                sngFile.SetString("sub_playlist", subPlaylist);
-                sngFile.SetInt("album_track", albumTrack);
-                sngFile.SetString("charter", charter);
-                sngFile.SetInt("hopo_frequency", customHOPO);
-                sngFile.SetBool("eighthnote_hopo", isEighthHOPO);
-                sngFile.SetInt("multiplier_note", multiplierNote);
-                sngFile.SetInt("delay", offset);
-                sngFile.SetInt("video_start_time", videoStart);
-                sngFile.SetBool("end_events", endEventsEnabled);
-                sngFile.SetString("loading_phrase", loadingPhrase);
-
-                foreach (var keyName in iniFile.GetKeyNames("song"))
-                {
-                    if (KnownKeys.IsKnownKey(keyName))
-                    {
-                        continue;
-                    }
-
-                    if (iniFile.TryGetBool("song", keyName, out var boolVal))
-                    {
-                        if (Program.Verbose)
-                        {
-                            ConMan.Out($"Unknown Key: {keyName} Value: {boolVal} BOOL");
-                        }
-                        sngFile.SetBool(keyName, boolVal);
-                    }
-                    else if (iniFile.TryGetInt("song", keyName, out var intVal))
-                    {
-                        if (Program.Verbose)
-                        {
-                            ConMan.Out($"Unknown Key: {keyName} Value: {intVal} INT");
-                        }
-                        sngFile.SetInt(keyName, intVal);
-                    }
-                    else if (iniFile.TryGetInt("song", keyName, out var floatVal))
-                    {
-                        if (Program.Verbose)
-                        {
-                            ConMan.Out($"Unknown Key: {keyName} Value: {floatVal} FLOAT");
-                        }
-                        sngFile.SetFloat(keyName, floatVal);
-                    }
-                    else if (iniFile.TryGetString("song", keyName, out var stringVal))
-                    {
-                        if (Program.Verbose)
-                        {
-                            ConMan.Out($"Unknown Key: {keyName} Value: {stringVal} STRING");
-                        }
-                        sngFile.SetString(keyName, stringVal);
-                    }
-                }
-                sngFile.metadataAvailable = true;
-
-                return true;
-            }
-            else
-            {
+            if (!iniFile.TryGetSection("song", out var section))
                 return false;
+
+            KnownKeys.ValidateKeys(section);
+
+            foreach (var (key, value) in section)
+            {
+                if (!KnownKeys.IsKnownKey(key) && Program.Verbose)
+                {
+                    ConMan.Out($"Unknown metadata. Key: {key} Value: {value}");
+                }
+                sngFile.SetString(key, value);
             }
+
+            sngFile.metadataAvailable = true;
+            return true;
         }
 
         private static readonly string videoPattern = @"(?i).*\.(mp4|avi|webm|vp8|ogv|mpeg)$";

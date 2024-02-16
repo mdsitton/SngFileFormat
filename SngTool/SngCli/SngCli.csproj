@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable> 
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
     <InvariantGlobalization>true</InvariantGlobalization>
     <DebuggerSupport>false</DebuggerSupport>
     <PublishSingleFile>true</PublishSingleFile>

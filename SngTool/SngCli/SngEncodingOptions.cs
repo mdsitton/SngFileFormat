@@ -115,19 +115,25 @@ namespace SngCli
 
             if (args.TryGetValue("opusBitrate", out string? bitrateStr) && bitrateStr != null)
             {
-                if (!int.TryParse(bitrateStr, out OpusBitrate))
+                if (!int.TryParse(bitrateStr, out int opusBitrate))
                 {
                     Console.WriteLine($"Value for opusBitrate is not valid {bitrateStr}");
-                    return;
+                }
+                else
+                {
+                    OpusBitrate = opusBitrate;
                 }
             }
 
             if (args.TryGetValue("jpegQuality", out string? jpegQualityStr) && jpegQualityStr != null)
             {
-                if (!int.TryParse(jpegQualityStr, out JpegQuality))
+                if (!int.TryParse(jpegQualityStr, out int jpegQuality))
                 {
                     Console.WriteLine($"Value for jpegQuality is not valid {jpegQualityStr}");
-                    return;
+                }
+                else
+                {
+                    JpegQuality = jpegQuality;
                 }
             }
 
@@ -136,9 +142,11 @@ namespace SngCli
                 if (!ValidSize(albumSize))
                 {
                     Console.WriteLine($"Value for albumResize is not valid {albumSize}");
-                    return;
                 }
-                AlbumSize = SizeStrToEnum(albumSize);
+                else
+                {
+                    AlbumSize = SizeStrToEnum(albumSize);
+                }
             }
         }
     }
