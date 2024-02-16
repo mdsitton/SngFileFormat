@@ -47,27 +47,8 @@ namespace SongLib
                         fileContent = fileContent.Slice(endOfLineIndex + 1);
                     }
 
-                    // Ignore any comments
-                    int commentIndex = line.IndexOfAny('#', ';');
-                    if (commentIndex >= 0)
-                    {
-                        var comment = line.Slice(commentIndex);
-
-                        // Check if this is a hex color code (e.g. #FFFFFF)
-                        if (comment[0] == '#' && comment.Length >= 7)
-                        {
-                            comment = comment[1..];
-                            int hexStopIndex = comment.IndexOfAnyExcept("0123456789ABCDEFabcdef");
-                            if (hexStopIndex is < 0 or >= 6)
-                            {
-                                commentIndex += hexStopIndex + 1;
-                            }
-                        }
-
-                        line = line.Slice(0, commentIndex).TrimEnd();
-                    }
-
-                    if (line.IsEmpty)
+                    // Ignore empty or comment lines
+                    if (line.IsEmpty || line[0] is '#' or ';')
                     {
                         continue;
                     }
