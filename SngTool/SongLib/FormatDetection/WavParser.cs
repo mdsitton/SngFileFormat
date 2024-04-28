@@ -11,6 +11,25 @@ public class WavParser
     private const string WaveIdentifier = "WAVE";
     private const string FmtIdentifier = "fmt ";
     private const string JunkIdentifier = "JUNK";
+    private const string BextIdentifier = "bext";
+
+    private readonly static byte[] RiffIdentifierBytes = Encoding.ASCII.GetBytes(RiffIdentifier);
+    private readonly static byte[] WaveIdentifierBytes = Encoding.ASCII.GetBytes(WaveIdentifier);
+    private readonly static byte[] FmtIdentifierBytes = Encoding.ASCII.GetBytes(FmtIdentifier);
+    private readonly static byte[] JunkIdentifierBytes = Encoding.ASCII.GetBytes(JunkIdentifier);
+    private readonly static byte[] BextIdentifierBytes = Encoding.ASCII.GetBytes(BextIdentifier);
+
+
+    private static void SkipChunk(ref int pos, byte[] header)
+    {
+        int junkChunkSize = header.ReadInt32LE(ref pos);
+        // Odd chunk sizes are padded to even
+        if ((junkChunkSize & 1) != 0)
+        {
+            junkChunkSize++;
+        }
+        pos += junkChunkSize;
+    }
 
     public static bool IsWav(Stream stream, string filePath)
     {
@@ -22,9 +41,8 @@ public class WavParser
             int pos = 0;
 
             // Check if the file starts with the "RIFF" chunk identifier
-            Span<byte> riffIdentifierBytes = stackalloc byte[RiffIdentifier.Length];
-            pos += Encoding.ASCII.GetBytes(RiffIdentifier, riffIdentifierBytes);
             Span<byte> riffHeaderBytes = header.AsSpan(0, RiffIdentifier.Length);
+            Span<byte> riffIdentifierBytes = RiffIdentifierBytes;
             if (!riffIdentifierBytes.SequenceEqual(riffHeaderBytes))
             {
                 return false;
@@ -33,36 +51,36 @@ public class WavParser
             // Parse the RIFF header
             int fileSize = header.ReadInt32LE(ref pos);
 
-            // Check if the file format is "WAVE"
-            Span<byte> waveIdentifierBytes = stackalloc byte[WaveIdentifier.Length];
-            Encoding.ASCII.GetBytes(WaveIdentifier, waveIdentifierBytes);
-
             Span<byte> wavIdBytes = stackalloc byte[WaveIdentifier.Length];
             header.ReadCountLE(ref pos, wavIdBytes);
 
+            Span<byte> waveIdentifierBytes = WaveIdentifierBytes;
             if (!waveIdentifierBytes.SequenceEqual(wavIdBytes))
             {
                 return false;
             }
 
-            Span<byte> fmtIdentifierBytes = stackalloc byte[FmtIdentifier.Length];
-            Encoding.ASCII.GetBytes(FmtIdentifier, fmtIdentifierBytes);
-
-            Span<byte> junkIdentifierBytes = stackalloc byte[FmtIdentifier.Length];
-            Encoding.ASCII.GetBytes(JunkIdentifier, junkIdentifierBytes);
-
             Span<byte> fmtIdBytes = stackalloc byte[FmtIdentifier.Length];
             header.ReadCountLE(ref pos, fmtIdBytes);
 
+            Span<byte> junkIdentifierBytes = JunkIdentifierBytes;
             if (fmtIdBytes.SequenceEqual(junkIdentifierBytes))
             {
                 // Skip the junk chunk
-                int junkChunkSize = header.ReadInt32LE(ref pos);
-                pos += junkChunkSize;
+                SkipChunk(ref pos, header);
+                header.ReadCountLE(ref pos, fmtIdBytes);
+            }
+
+            Span<byte> bextIdentifierBytes = BextIdentifierBytes;
+            if (fmtIdBytes.SequenceEqual(bextIdentifierBytes))
+            {
+                // Skip the bext chunk
+                SkipChunk(ref pos, header);
                 header.ReadCountLE(ref pos, fmtIdBytes);
             }
 
             // Parse the fmt chunk
+            Span<byte> fmtIdentifierBytes = FmtIdentifierBytes;
             if (!fmtIdBytes.SequenceEqual(fmtIdentifierBytes))
             {
                 return false;
