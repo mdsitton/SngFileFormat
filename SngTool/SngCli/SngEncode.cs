@@ -28,7 +28,7 @@ namespace SngCli
                     return new List<string>();
                 }
 
-                foreach (var entry in path.EnumerateFiles("*", new EnumerationOptions { IgnoreInaccessible = true, RecurseSubdirectories = true }))
+                foreach (var entry in path.EnumerateFiles("*", new EnumerationOptions { IgnoreInaccessible = true, RecurseSubdirectories = true, AttributesToSkip = default }))
                 {
                     if (entry.DirectoryName == null)
                     {
