@@ -35,7 +35,7 @@ namespace SngCli
                         continue;
                     }
                     // if we find a .chart or .mid then we validate it for a song folder
-                    if (entry.Extension == ".chart" || entry.Extension == ".mid")
+                    if (entry.Extension.Equals(".chart", StringComparison.OrdinalIgnoreCase) || entry.Extension.Equals(".mid", StringComparison.OrdinalIgnoreCase))
                     {
                         if (IsValidSongFolder(entry.DirectoryName))
                         {
@@ -57,10 +57,10 @@ namespace SngCli
         private static bool IsValidSongFolder(string subfolder)
         {
             string[] files = Directory.GetFiles(subfolder);
-            bool hasChart = files.Any(f => f.EndsWith(".chart"));
-            bool hasMidi = files.Any(f => f.EndsWith(".mid"));
-            bool hasAudioFile = files.Any(f => f.EndsWith(".wav") || f.EndsWith(".ogg") || f.EndsWith(".opus") || f.EndsWith(".mp3"));
-            bool hasSongIni = files.Any(f => f.EndsWith("song.ini"));
+            bool hasChart = files.Any(f => f.EndsWith(".chart", StringComparison.OrdinalIgnoreCase));
+            bool hasMidi = files.Any(f => f.EndsWith(".mid", StringComparison.OrdinalIgnoreCase));
+            bool hasAudioFile = files.Any(f => f.EndsWith(".wav", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".ogg", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".opus", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase));
+            bool hasSongIni = files.Any(f => f.EndsWith("song.ini", StringComparison.OrdinalIgnoreCase));
 
             return (hasChart || hasMidi) && hasAudioFile && (hasSongIni || hasChart);
         }
@@ -285,7 +285,7 @@ namespace SngCli
         {
             foreach (var path in filePaths)
             {
-                if (path.EndsWith(fileName, StringComparison.InvariantCultureIgnoreCase))
+                if (path.EndsWith(fileName, StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }
