@@ -216,16 +216,22 @@ namespace SongLib
                 CreateNoWindow = true,
                 Arguments = arguments
             };
-
+            List<string> errorData = new List<string>();
             using (Process process = new Process { StartInfo = info })
             {
-                if (debug)
+                process.ErrorDataReceived += (object sender, DataReceivedEventArgs e) =>
                 {
-                    process.ErrorDataReceived += (object sender, DataReceivedEventArgs e) =>
+                    if (e.Data == null)
+                    {
+                        return;
+                    }
+                    errorData.Add(e.Data);
+                    if (debug)
                     {
                         Console.WriteLine(e.Data);
-                    };
-                }
+                    }
+                };
+
                 process.Start();
 
                 process.BeginErrorReadLine();
@@ -294,7 +300,7 @@ namespace SongLib
                     Console.WriteLine($"{processName} encoding error!");
                     if (process.ExitCode == 1)
                     {
-                        Console.WriteLine(await process.StandardError.ReadToEndAsync());
+                        Console.WriteLine(string.Join('\n', errorData));
                     }
                     return null;
                 }
