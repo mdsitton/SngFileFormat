@@ -61,6 +61,8 @@ namespace SngCli
             errorDisableOutput = error;
             ProgressItems = 0;
             Console.CursorVisible = true;
+
+            Console.WriteLine("Total elapsed time: " + stopwatch.Elapsed.ToString());
             stopwatch.Reset();
             updateThread = null;
         }
