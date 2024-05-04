@@ -74,8 +74,6 @@ namespace SongLib
         {
             (string filename, NativeByteArray? data) outData;
 
-            Console.WriteLine($"Encoding {filePath}");
-
             var fileType = DetermineAudioFormat(filePath);
 
             switch (fileType)

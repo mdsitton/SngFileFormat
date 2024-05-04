@@ -297,6 +297,7 @@ namespace SngCli
         private static async Task<(string filename, NativeByteArray? data)> EncodeAudio(string fileName, string filePath, bool opusEncode = false)
         {
             var conf = SngEncodingConfig.Instance;
+            ConMan.Out($"Encoding {filePath}");
             if (opusEncode)
             {
                 return await AudioEncoding.ToOpus(filePath, conf.OpusBitrate);
