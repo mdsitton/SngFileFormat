@@ -16,17 +16,14 @@ namespace SongLib
         public readonly long TotalSize;
         public uint SamplesWritten = 0;
 
-        public static long CalculateSizeEstimate(long totalSamples)
-        {
-            return (totalSamples * ChannelSize) + 44;
-        }
-
         public delegate int IngestSamplesDelegate(Span<float> audioSamples);
 
         private IngestSamplesDelegate ingestCallback;
         private Func<long> remainingCallback;
 
-        private byte[] header = new byte[44];
+        private const int HeaderSize = 44;
+
+        private byte[] header = new byte[HeaderSize];
         private long streamPos = 0;
 
         public WavFileWriter(IngestSamplesDelegate ingestCallback, Func<long> remainingCallback, int sampleRate, ushort channels, long totalSamples)
@@ -37,12 +34,13 @@ namespace SongLib
             this.ingestCallback = ingestCallback;
             this.remainingCallback = remainingCallback;
 
-            TotalSize = CalculateSizeEstimate(totalSamples);
+            var sampleSize = (int)(totalSamples * ChannelSize);
+            TotalSize = sampleSize + HeaderSize;
 
             Span<byte> headerSpan = new Span<byte>(header);
 
             // write file header
-            CreateWavHeader(headerSpan, sampleRate, BitsPerSample, channels, (int)TotalSize);
+            CreateWavHeader(headerSpan, sampleRate, BitsPerSample, channels, sampleSize);
         }
 
         private static void WriteFourCC(Span<byte> buffer, ref int offset, string fourCC)
@@ -68,7 +66,7 @@ namespace SongLib
 
             // RIFF chunk
             WriteFourCC(buffer, ref offset, "RIFF");
-            buffer.WriteInt32LE(ref offset, 36 + dataSize); // Chunk size
+            buffer.WriteInt32LE(ref offset, (HeaderSize - 8) + dataSize); // Chunk size
             WriteFourCC(buffer, ref offset, "WAVE");
 
             // fmt sub-chunk
