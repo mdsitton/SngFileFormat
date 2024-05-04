@@ -3,11 +3,10 @@ using System.Collections.Generic;
 using System.Buffers.Binary;
 using System.Text;
 using BinaryEx;
-using System.IO.MemoryMappedFiles;
 
 namespace SongLib
 {
-    public unsafe class WavFileWriter : IDisposable
+    public class WavFileWriter : Stream
     {
         public const ushort BitsPerSample = 32;
         private const ushort ChannelSize = BitsPerSample / 8; // 8 bits per byte
@@ -15,42 +14,50 @@ namespace SongLib
         public readonly ushort Channels;
         public readonly long TotalSamples;
         public readonly long TotalSize;
-        public MemoryMappedFile mappedFile;
-        private MemoryMappedViewAccessor accessor;
         public uint SamplesWritten = 0;
-
-        private byte* ptrWrite;
-
 
         public static long CalculateSizeEstimate(long totalSamples)
         {
             return (totalSamples * ChannelSize) + 44;
         }
 
-        public WavFileWriter(MemoryMappedFile file, int sampleRate, ushort channels, long totalSamples)
+        public delegate int IngestSamplesDelegate(Span<float> audioSamples);
+
+        private IngestSamplesDelegate ingestCallback;
+        private Func<long> remainingCallback;
+
+        private byte[] header = new byte[44];
+        private long streamPos = 0;
+
+        public WavFileWriter(IngestSamplesDelegate ingestCallback, Func<long> remainingCallback, int sampleRate, ushort channels, long totalSamples)
         {
             Channels = channels;
             TotalSamples = totalSamples;
             SampleRate = sampleRate;
-            mappedFile = file;
+            this.ingestCallback = ingestCallback;
+            this.remainingCallback = remainingCallback;
 
             TotalSize = CalculateSizeEstimate(totalSamples);
 
-            accessor = mappedFile.CreateViewAccessor();
-            var mappedFileSize = accessor.SafeMemoryMappedViewHandle.ByteLength;
+            Span<byte> headerSpan = new Span<byte>(header);
 
-            if (mappedFileSize < (ulong)TotalSize)
-            {
-                accessor.Dispose();
-                throw new ArgumentException("MemoryMappedFile too small");
-            }
-
-            accessor.SafeMemoryMappedViewHandle.AcquirePointer(ref ptrWrite);
-
-            Span<byte> headerSpan = new Span<byte>(ptrWrite, 44);
             // write file header
             CreateWavHeader(headerSpan, sampleRate, BitsPerSample, channels, (int)TotalSize);
-            writePos += 44;
+        }
+
+        private static void WriteFourCC(Span<byte> buffer, ref int offset, string fourCC)
+        {
+            if (fourCC.Length != 4)
+            {
+                throw new ArgumentException("The length of the fourCC string must be exactly 4 characters.");
+            }
+
+            if (buffer.Length < offset + 4)
+            {
+                throw new ArgumentException("The buffer is too small to write the fourCC string.");
+            }
+
+            offset += Encoding.ASCII.GetBytes(fourCC, buffer.Slice(offset, 4));
         }
 
         private void CreateWavHeader(Span<byte> buffer, int sampleRate, int bitsPerSample, int channels, int dataSize)
@@ -79,62 +86,113 @@ namespace SongLib
             buffer.WriteInt32LE(ref offset, dataSize); // Sub-chunk size
         }
 
-        public void Dispose()
-        {
-            accessor.SafeMemoryMappedViewHandle.ReleasePointer();
-            accessor.Dispose();
-        }
-
-        /// <summary>
-        /// This returns the maximum samples that we can ingest in one call 
-        /// </summary>
-        public int MaxChunkSamples => (Array.MaxLength / ChannelSize) & ~1;
-
         public bool Completed => SamplesWritten >= TotalSamples;
+        public int RemainingSamples => (int)(TotalSamples - SamplesWritten);
 
-        long writePos = 0;
+        public override bool CanRead => true;
 
-        public void IngestSamples(Span<float> audioSamples)
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => false;
+
+        public override long Length => TotalSize;
+
+        public override long Position { get => streamPos; set => throw new NotImplementedException(); }
+
+        private float[] sampleBuffer = new float[8192];
+
+        private bool HasExaustedSouce => remainingCallback() == 0;
+
+        public override int Read(byte[] buffer, int offset, int count)
         {
-            if (audioSamples.Length > MaxChunkSamples)
+            if (streamPos < 44)
             {
-                throw new ArgumentException("Too many samples, sample count should be lower than MaxChunkSamples");
+                int headerBytes = Math.Min(44, count);
+                Array.Copy(header, streamPos, buffer, offset, headerBytes);
+                streamPos += headerBytes;
+                return headerBytes;
             }
-            int sampleCount = audioSamples.Length;
-            int pcmDataSize = sampleCount * ChannelSize;
-
-            var endPos = writePos + pcmDataSize;
-
-            // If end pos too long clamp to max size
-            if (endPos > TotalSize)
+            else if (!HasExaustedSouce && SamplesWritten < TotalSamples)
             {
+                int samplesToRead = Math.Min(RemainingSamples, count / ChannelSize);
 
-                pcmDataSize = (int)(TotalSize - writePos) & ~1;
-                sampleCount = pcmDataSize / ChannelSize;
-                audioSamples = audioSamples.Slice(0, sampleCount);
-                Console.WriteLine("Too long, clamping to max");
-            }
-            Span<byte> wavDataSpan = new Span<byte>(ptrWrite + writePos, pcmDataSize);
+                int maxBufferSamples = sampleBuffer.Length;
 
-            int pos = 0;
-            for (int i = 0; i < sampleCount; i++)
-            {
-                BinaryPrimitives.WriteSingleLittleEndian(wavDataSpan.Slice(pos, 4), audioSamples[i]);
-                pos += 4;
+                int injestCount = samplesToRead / maxBufferSamples;
+
+                int samplesRemaining = samplesToRead;
+                while (samplesRemaining > 0 && !HasExaustedSouce)
+                {
+                    int sampleCount = Math.Min(maxBufferSamples, samplesRemaining);
+                    int samplesRead = ingestCallback.Invoke(sampleBuffer.AsSpan(0, sampleCount));
+
+                    if (samplesRead == 0)
+                    {
+                        // Console.WriteLine($"No samples read {samplesRemaining} samples but {remainingCallback()} samples remaining in the source.");
+                        break;
+                    }
+
+                    var endPos = streamPos + samplesRead;
+
+                    // If end pos too long clamp to max size
+                    // typically the last samples will be empty for most music anyways
+                    if (endPos > TotalSize)
+                    {
+                        Console.WriteLine($"End pos {endPos} is greater than total size {TotalSize} clamping to total size.");
+                        var validSampleCount = (TotalSize - streamPos) / ChannelSize;
+                        samplesRead = (int)validSampleCount;
+                    }
+                    samplesRemaining -= samplesRead;
+                    SamplesWritten += (uint)samplesRead;
+                    // Console.WriteLine($"Writing {samplesRead} samples of total {count / ChannelSize} to output");
+
+                    buffer.WriteCountLE<float>(ref offset, sampleBuffer.AsSpan(0, samplesRead));
+
+                    if (endPos > TotalSize)
+                    {
+                        break;
+                    }
+                }
+
+                if (HasExaustedSouce && RemainingSamples > 0)
+                {
+                    Console.WriteLine($"Exausted source but still have {samplesRemaining} samples remaining in this read but {RemainingSamples} samples overall. Filling with 0s.");
+                    for (int i = 0; i < samplesRemaining; i++)
+                    {
+                        buffer.WriteFloatLE(ref offset, 0);
+                    }
+                }
+                else if (HasExaustedSouce)
+                {
+                    return 0;
+                }
+
+                int byteCount = (samplesToRead - samplesRemaining) * ChannelSize;
+                streamPos += byteCount;
+
+                return byteCount;
             }
-            writePos += pos;
-            SamplesWritten += (uint)sampleCount;
+            return 0;
         }
 
-        private static void WriteFourCC(Span<byte> buffer, ref int offset, string fourCC)
+        // Required stream methods that are not implemented
+        public override void Flush()
         {
-            if (fourCC.Length != 4)
-            {
-                throw new ArgumentException("The length of the fourCC string must be exactly 4 characters.");
-            }
+        }
 
-            Encoding.ASCII.GetBytes(fourCC).CopyTo(buffer.Slice(offset, 4));
-            offset += 4;
+        public override long Seek(long offset, SeekOrigin origin)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void SetLength(long value)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            throw new NotImplementedException();
         }
     }
 }
