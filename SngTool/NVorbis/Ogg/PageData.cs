@@ -1,40 +1,20 @@
 using System;
-using System.Diagnostics.CodeAnalysis;
-using System.Threading;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using VoxelPizza.Memory;
 
 namespace NVorbis.Ogg
 {
-    internal class PageData
+    internal sealed class PageData : RefCounted
     {
         private readonly PageDataPool _pool;
-        internal ArraySegment<byte> _pageData;
-        internal int _refCount;
+        private ArraySegment<byte> _pageData;
 
-        public bool IsResync { get; internal set; }
+        public bool IsResync { get; private set; }
 
-        public PageHeader Header
-        {
-            get
-            {
-                if (_refCount <= 0)
-                {
-                    ThrowObjectDisposed();
-                }
-                return new PageHeader(_pageData);
-            }
-        }
+        public PageHeader Header => new(AsSpan());
 
-        public int Length
-        {
-            get
-            {
-                if (_refCount <= 0)
-                {
-                    ThrowObjectDisposed();
-                }
-                return _pageData.Count;
-            }
-        }
+        public int Length => AsSegment().Count;
 
         internal PageData(PageDataPool pool)
         {
@@ -43,9 +23,17 @@ namespace NVorbis.Ogg
             _pageData = Array.Empty<byte>();
         }
 
+        public void Reset(ArraySegment<byte> pageData, bool isResync)
+        {
+            ResetState();
+
+            _pageData = pageData;
+            IsResync = isResync;
+        }
+
         public ArraySegment<byte> AsSegment()
         {
-            if (_refCount <= 0)
+            if (IsClosed)
             {
                 ThrowObjectDisposed();
             }
@@ -54,11 +42,14 @@ namespace NVorbis.Ogg
 
         public Span<byte> AsSpan()
         {
-            if (_refCount <= 0)
-            {
-                ThrowObjectDisposed();
-            }
-            return _pageData.AsSpan();
+            return AsSegment().AsSpan();
+        }
+
+        internal ArraySegment<byte> ReplaceSegment(ArraySegment<byte> newSegment)
+        {
+            ArraySegment<byte> previousSegment = _pageData;
+            _pageData = newSegment;
+            return previousSegment;
         }
 
         public PageSlice GetPacket(uint packetIndex)
@@ -93,43 +84,20 @@ namespace NVorbis.Ogg
             return new PageSlice(this, 0, 0);
         }
 
-        public void IncrementRef()
-        {
-            if (_refCount == 0)
-            {
-                ThrowObjectDisposed();
-            }
-            Interlocked.Increment(ref _refCount);
-        }
-
-        public int DecrementRef()
-        {
-            int count = Interlocked.Decrement(ref _refCount);
-            if (count == 0)
-            {
-                Dispose();
-            }
-            return count;
-        }
-
-        private void Dispose()
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        protected override void Release()
         {
             _pool.Return(this);
-            // System.GC.SuppressFinalize(this);
-        }
 
-        [DoesNotReturn]
-        private void ThrowObjectDisposed()
-        {
-            throw new ObjectDisposedException(GetType().Name);
+            base.Release();
         }
 
 #if DEBUG
         ~PageData()
         {
-            if (_refCount > 0)
+            if (Count > 0)
             {
-                Dispose();
+                _pool.Return(this);
             }
         }
 #endif

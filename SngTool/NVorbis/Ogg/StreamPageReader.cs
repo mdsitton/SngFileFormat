@@ -455,7 +455,7 @@ namespace NVorbis.Ogg
 
         private void SetLastPage(PageData? pageData)
         {
-            Debug.Assert(pageData == null || pageData._refCount > 0);
+            Debug.Assert(pageData == null || !pageData.IsClosed);
 
             _lastPage?.DecrementRef();
             _lastPage = pageData;

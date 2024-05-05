@@ -1,6 +1,7 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using NVorbis.Ogg;
 
 namespace NVorbis
@@ -12,15 +13,11 @@ namespace NVorbis
 
         public PageData Rent(int length, bool isResync)
         {
-            PageData obj = RentObject();
-
-            obj._refCount = 1;
-            obj.IsResync = isResync;
-
             byte[] array = _arrayPool.Rent(length);
             ArraySegment<byte> segment = new(array, 0, length);
-            obj._pageData = segment;
 
+            PageData obj = RentObject();
+            obj.Reset(segment, isResync);
             return obj;
         }
 
@@ -38,18 +35,17 @@ namespace NVorbis
 
         public void Return(PageData pageData)
         {
-            if (pageData._refCount != 0)
+            if (!pageData.IsClosed)
             {
-                throw new InvalidOperationException();
+                ThrowNotClosedPage();
             }
 
-            ArraySegment<byte> segment = pageData._pageData;
+            ArraySegment<byte> segment = pageData.ReplaceSegment(default);
             if (segment.Array != null)
             {
                 _arrayPool.Return(segment.Array);
             }
 
-            pageData._pageData = Array.Empty<byte>();
             ReturnObject(pageData);
         }
 
@@ -63,6 +59,12 @@ namespace NVorbis
                     return;
                 }
             }
+        }
+
+        [DoesNotReturn]
+        private static void ThrowNotClosedPage()
+        {
+            throw new InvalidOperationException("Attempt at returning PageData that is not closed.");
         }
     }
 }
