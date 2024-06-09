@@ -191,7 +191,32 @@ namespace SongLib
         public bool TryGetBool(string section, string key, out bool value)
         {
             value = default;
-            return TryGetString(section, key, out var strVal) && bool.TryParse(strVal, out value);
+            var hasStr = TryGetString(section, key, out var strVal);
+
+            if (!hasStr)
+            {
+                return false;
+            }
+
+            if (int.TryParse(strVal, out var intVal))
+            {
+                value = intVal != 0;
+                return true;
+            }
+
+            if (strVal.Equals("true", StringComparison.OrdinalIgnoreCase))
+            {
+                value = true;
+                return true;
+            }
+
+            if (strVal.Equals("false", StringComparison.OrdinalIgnoreCase))
+            {
+                value = false;
+                return true;
+            }
+
+            return false;
         }
 
         public bool TryGetInt(string section, string key, out int value)
