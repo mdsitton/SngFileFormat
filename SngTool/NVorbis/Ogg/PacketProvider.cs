@@ -240,8 +240,19 @@ namespace NVorbis.Ogg
 
                         // This will either be a continued packet OR the last packet of the last page,
                         // in both cases that's precisely the value we need.
-                        VorbisPacket lastPacket = CreateValidPacket(
-                            ref prevPageIndex, ref lastPacketIndex, false, prevIsContinued, prevPacketCount);
+
+                        VorbisPacket lastPacket = CreatePacket(
+                            ref prevPageIndex, ref lastPacketIndex, false, 0, false, prevIsContinued, prevPacketCount, 0);
+
+                        if (!lastPacket.IsValid)
+                        {
+                            // Avoid throwing for streams that do not have an end-of-stream flag.
+                            if (!_reader.HasAllPages)
+                            {
+                                ThrowInvalidContinuationPacketException();
+                            }
+                            break;
+                        }
 
                         int count = packetGranuleCountProvider.GetPacketGranuleCount(ref lastPacket);
                         pageLength += count;

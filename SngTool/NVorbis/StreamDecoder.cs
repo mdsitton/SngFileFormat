@@ -36,7 +36,7 @@ namespace NVorbis
         private long _currentPosition;
         private bool _hasClipped;
         private bool _hasPosition;
-        private bool _eosFound;
+        private EndOfStreamFlags _eosFound;
 
         private float[][]? _nextPacketBuf;
         private float[][]? _prevPacketBuf;
@@ -340,7 +340,7 @@ namespace NVorbis
             _prevPacketStop = 0;
             ReturnBuffer(_nextPacketBuf);
             _nextPacketBuf = null;
-            _eosFound = false;
+            _eosFound = EndOfStreamFlags.None;
             _hasClipped = false;
             _hasPosition = false;
         }
@@ -423,7 +423,7 @@ namespace NVorbis
                 // if we don't have any more valid data in the current packet, read in the next packet
                 if (_prevPacketStart == _prevPacketEnd)
                 {
-                    if (_eosFound)
+                    if (_eosFound != EndOfStreamFlags.None)
                     {
                         // no more samples, so just return
                         ReturnBuffer(_prevPacketBuf);
@@ -433,8 +433,11 @@ namespace NVorbis
 
                     if (!ReadNextPacket(idx, out long samplePosition))
                     {
-                        // drain the current packet (the windowing will fade it out)
-                        _prevPacketEnd = _prevPacketStop;
+                        if ((_eosFound & EndOfStreamFlags.PacketFlag) != 0)
+                        {
+                            // drain the current packet (the windowing will fade it out)
+                            _prevPacketEnd = _prevPacketStop;
+                        }
                     }
 
                     // if we need to pick up a position, and the packet had one, apply the position now
@@ -518,9 +521,9 @@ namespace NVorbis
 
                     for (; j + Vector128<float>.Count <= count; j += Vector128<float>.Count)
                     {
-                        Vector128<float> p0 = Vector128.LoadUnsafe(ref prev0, (nuint) j);
-                        Vector128<float> p1 = Vector128.LoadUnsafe(ref prev1, (nuint) j);
-                        
+                        Vector128<float> p0 = Vector128.LoadUnsafe(ref prev0, (nuint)j);
+                        Vector128<float> p1 = Vector128.LoadUnsafe(ref prev1, (nuint)j);
+
                         // Interleave channels
                         Vector128<float> ts0 = Vector128Helper.UnpackLow(p0, p1);  // [ 0, 0, 1, 1 ]
                         Vector128<float> ts1 = Vector128Helper.UnpackHigh(p0, p1); // [ 2, 2, 3, 3 ]
@@ -531,8 +534,8 @@ namespace NVorbis
                             ts1 = Utils.ClipValue(ts1, ref clipped1);
                         }
 
-                        ts0.StoreUnsafe(ref dst, (nuint) j * 2);
-                        ts1.StoreUnsafe(ref dst, (nuint) j * 2 + (nuint) Vector128<float>.Count);
+                        ts0.StoreUnsafe(ref dst, (nuint)j * 2);
+                        ts1.StoreUnsafe(ref dst, (nuint)j * 2 + (nuint)Vector128<float>.Count);
                     }
                 }
                 else if (channels == 1)
@@ -541,12 +544,12 @@ namespace NVorbis
 
                     for (; j + Vector128<float>.Count <= count; j += Vector128<float>.Count)
                     {
-                        Vector128<float> p0 = Vector128.LoadUnsafe(ref prev0, (nuint) j);
+                        Vector128<float> p0 = Vector128.LoadUnsafe(ref prev0, (nuint)j);
                         if (T.IsClip)
                         {
                             p0 = Utils.ClipValue(p0, ref clipped0);
                         }
-                        p0.StoreUnsafe(ref dst, (nuint) j);
+                        p0.StoreUnsafe(ref dst, (nuint)j);
                     }
                 }
 
@@ -558,7 +561,7 @@ namespace NVorbis
             {
                 ref float prev = ref MemoryMarshal.GetReference(prevPacketBuf[ch].AsSpan(_prevPacketStart, count));
                 ref float tar = ref Unsafe.Add(ref dst, ch);
-                
+
                 bool clipped = false;
 
                 for (int i = j; i < count; i++)
@@ -599,7 +602,7 @@ namespace NVorbis
                         {
                             Vector<float> p0 = VectorHelper.LoadUnsafe(ref src, j);
                             Vector<float> c0 = Utils.ClipValue(p0, ref clipped);
-                            c0.StoreUnsafe(ref dst, (nuint) j);
+                            c0.StoreUnsafe(ref dst, (nuint)j);
                         }
 
                         _hasClipped |= !Vector.EqualsAll(clipped, Vector<float>.Zero);
@@ -627,7 +630,7 @@ namespace NVorbis
         {
             // decode the next packet now so we can start overlapping with it
             float[][]? curPacket = DecodeNextPacket(
-                out int startIndex, out int validLen, out int totalLen, out bool isEndOfStream,
+                out int startIndex, out int validLen, out int totalLen, out EndOfStreamFlags isEndOfStream,
                 out samplePosition, out int bitsRead, out int bitsRemaining, out int containerOverheadBits);
 
             _eosFound |= isEndOfStream;
@@ -638,7 +641,7 @@ namespace NVorbis
             }
 
             // if we get a max sample position, back off our valid length to match
-            if (samplePosition != -1 && isEndOfStream)
+            if (samplePosition != -1 && isEndOfStream != EndOfStreamFlags.None)
             {
                 long actualEnd = _currentPosition + bufferedSamples + validLen - startIndex;
                 int diff = (int)(samplePosition - actualEnd);
@@ -678,14 +681,14 @@ namespace NVorbis
         }
 
         private float[][]? DecodeNextPacket(
-            out int packetStartIndex, out int packetValidLength, out int packetTotalLength, out bool isEndOfStream,
+            out int packetStartIndex, out int packetValidLength, out int packetTotalLength, out EndOfStreamFlags isEndOfStream,
             out long samplePosition, out int bitsRead, out int bitsRemaining, out int containerOverheadBits)
         {
             VorbisPacket packet = _packetProvider.GetNextPacket();
             if (!packet.IsValid)
             {
                 // no packet? we're at the end of the stream
-                isEndOfStream = true;
+                isEndOfStream = EndOfStreamFlags.InvalidPacket;
                 bitsRead = 0;
                 bitsRemaining = 0;
                 containerOverheadBits = 0;
@@ -695,7 +698,7 @@ namespace NVorbis
                 try
                 {
                     // if the packet is flagged as the end of the stream, we can safely mark _eosFound
-                    isEndOfStream = packet.IsEndOfStream;
+                    isEndOfStream = packet.IsEndOfStream ? EndOfStreamFlags.PacketFlag : EndOfStreamFlags.None;
 
                     // resync... that means we've probably lost some data; pick up a new position
                     if (packet.IsResync)
@@ -758,7 +761,7 @@ namespace NVorbis
                         Vector<float> pi = VectorHelper.LoadUnsafe(ref prev, i);
 
                         Vector<float> result = ni + pi;
-                        result.StoreUnsafe(ref next, (nuint) i);
+                        result.StoreUnsafe(ref next, (nuint)i);
                     }
                 }
                 for (; i < length; i++)
@@ -833,7 +836,7 @@ namespace NVorbis
             if (!ReadNextPacket(0, out _))
             {
                 // we'll use this to force ReadSamples to fail to read
-                _eosFound = true;
+                _eosFound |= EndOfStreamFlags.InvalidPreroll;
                 long maxGranuleCount = _packetProvider.GetGranuleCount(this);
                 if (samplePosition > maxGranuleCount)
                 {
@@ -849,7 +852,7 @@ namespace NVorbis
             {
                 ResetDecoder();
                 // we'll use this to force ReadSamples to fail to read
-                _eosFound = true;
+                _eosFound |= EndOfStreamFlags.InvalidPacket;
                 throw new PreRollPacketException();
             }
 
@@ -967,7 +970,7 @@ namespace NVorbis
         public bool HasClipped => _hasClipped;
 
         /// <inheritdoc />
-        public bool IsEndOfStream => _eosFound && _prevPacketBuf == null;
+        public bool IsEndOfStream => _eosFound != EndOfStreamFlags.None && _prevPacketBuf == null;
 
         /// <inheritdoc />
         public IStreamStats Stats => _stats;
