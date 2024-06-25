@@ -2,19 +2,27 @@
 
 namespace NLayer.Decoder
 {
+    enum ID3FrameType
+    {
+        ID3v1,
+        ID3v1Enh,
+        ID3v2
+    }
+
     internal sealed class ID3Frame : FrameBase
     {
-        private int _version;
+        private ID3FrameType _version;
 
-        private ID3Frame()
+        public ID3Frame(ID3FrameType version)
         {
+            _version = version;
         }
 
         protected override int ValidateFrameHeader()
         {
             switch (_version)
             {
-                case 2:
+                case ID3FrameType.ID3v2:
                     // v2, yay!
                     Span<byte> buf = stackalloc byte[7];
                     if (Read(3, buf) == 7)
@@ -46,11 +54,11 @@ namespace NLayer.Decoder
                                  | (buf[6]);
 
                         // finally, check to make sure that all the right bits are cleared
-                        int flags = 
-                            (buf[2] & flagsMask) | 
+                        int flags =
+                            (buf[2] & flagsMask) |
                             (buf[3] & 0x80) |
-                            (buf[4] & 0x80) | 
-                            (buf[5] & 0x80) | 
+                            (buf[4] & 0x80) |
+                            (buf[5] & 0x80) |
                             (buf[6] & 0x80);
 
                         if (!(flags != 0 || buf[1] == 0xFF))
@@ -58,10 +66,12 @@ namespace NLayer.Decoder
                     }
                     break;
 
-                case 1:
+                case ID3FrameType.ID3v1Enh:
+                    // ID3v1 extended "TAG+"
                     return 227 + 128;
 
-                case 0:
+                case ID3FrameType.ID3v1:
+                    // ID3v1 "TAG"
                     return 128;
             }
 
@@ -74,15 +84,15 @@ namespace NLayer.Decoder
             // we can still read the whole frame, so no biggie
             switch (_version)
             {
-                case 2:
+                case ID3FrameType.ID3v2:
                     ParseV2();
                     break;
 
-                case 1:
+                case ID3FrameType.ID3v1Enh:
                     ParseV1Enh();
                     break;
 
-                case 0:
+                case ID3FrameType.ID3v1:
                     ParseV1(3);
                     break;
             }
@@ -166,15 +176,7 @@ namespace NLayer.Decoder
             // look for any merged frames, as well
         }
 
-        public int Version
-        {
-            get
-            {
-                if (_version == 0)
-                    return 1;
-                return _version;
-            }
-        }
+        public ID3FrameType Version => _version;
 
         //public string Title { get; private set; }
         //public string Artist { get; private set; }
@@ -195,14 +197,14 @@ namespace NLayer.Decoder
         public static ID3Frame? TrySync(uint syncMark)
         {
             if ((syncMark & 0xFFFFFF00U) == 0x49443300)
-                return new ID3Frame { _version = 2 };
+                return new ID3Frame(ID3FrameType.ID3v2);
 
             if ((syncMark & 0xFFFFFF00U) == 0x54414700)
             {
                 if ((syncMark & 0xFF) == 0x2B)
-                    return new ID3Frame { _version = 1 };
+                    return new ID3Frame(ID3FrameType.ID3v1Enh);
                 else
-                    return new ID3Frame { _version = 0 };
+                    return new ID3Frame(ID3FrameType.ID3v1);
             }
 
             return null;

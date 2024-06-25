@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace NLayer.Decoder
 {
@@ -40,6 +41,7 @@ namespace NLayer.Decoder
             return false;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected int Read(int offset, Span<byte> destination)
         {
             if (_savedBuffer != null)
@@ -56,6 +58,7 @@ namespace NLayer.Decoder
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected int ReadByte(int offset)
         {
             if (_savedBuffer != null)

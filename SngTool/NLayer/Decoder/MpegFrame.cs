@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Buffers.Binary;
 using System.Diagnostics;
 
@@ -6,21 +6,18 @@ namespace NLayer.Decoder
 {
     public sealed class MpegFrame : FrameBase, IMpegFrame
     {
-        private static readonly byte[][][] _bitRateTable =
-        {
-            new byte[][]
-            {
-                new byte[] { 0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56 },
-                new byte[] { 0, 4, 6, 7, 8, 10, 12, 14, 16, 20, 24, 28, 32, 40, 48 },
-                new byte[] { 0, 4, 5, 6, 7, 8, 10, 12, 14, 16, 20, 24, 28, 32, 40 }
-            },
-            new byte[][]
-            {
-                new byte[] { 0, 4, 6, 7, 8, 10, 12, 14, 16, 18, 20, 22, 24, 28, 32 },
-                new byte[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 18, 20 },
-                new byte[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 18, 20 }
-            },
-        };
+        private static readonly byte[][][] _bitRateTable = [
+            [
+                [0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56],
+                [0, 4, 6, 7, 8, 10, 12, 14, 16, 20, 24, 28, 32, 40, 48],
+                [0, 4, 5, 6, 7, 8, 10, 12, 14, 16, 20, 24, 28, 32, 40]
+            ],
+            [
+                [0, 4, 6, 7, 8, 10, 12, 14, 16, 18, 20, 22, 24, 28, 32],
+                [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 18, 20],
+                [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 18, 20]
+            ],
+        ];
 
         // base: 2xIntPtr, 1x8, 1x4
         // total: 3xIntPtr, 4x8, 4x4
@@ -474,22 +471,29 @@ namespace NLayer.Decoder
             if (_isMuted)
                 return 0;
 
-            while (_bitsRead < bitCount)
+            if (bitCount > _bitsRead)
             {
-                int b = ReadByte(_readOffset);
-                if (b == -1)
+                var newBitsRequired = bitCount - _bitsRead;
+                int bytesToRead = (int)Math.Ceiling(newBitsRequired / 8.0);
+
+                Span<byte> bytes = stackalloc byte[bytesToRead];
+                var count = Read(_readOffset, bytes);
+                _readOffset += count;
+
+                if (count != bytes.Length)
+                {
                     ThrowEndOfStream();
+                }
 
-                _readOffset++;
-
-                _bitBucket <<= 8;
-                _bitBucket |= (byte)(b & 0xFF);
-                _bitsRead += 8;
+                for (int i = 0; i < count; i++)
+                {
+                    _bitBucket = (_bitBucket << 8) | bytes[i];
+                }
+                _bitsRead += count * 8;
             }
 
-            int tmp = (int)((_bitBucket >> (_bitsRead - bitCount)) & ((1UL << bitCount) - 1));
             _bitsRead -= bitCount;
-            return tmp;
+            return (int)((_bitBucket >> _bitsRead) & ((1UL << bitCount) - 1));
         }
 
         public static MpegFrame? TrySync(uint syncMark)

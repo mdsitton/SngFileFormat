@@ -1,27 +1,32 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.CompilerServices;
 
 namespace NLayer.Decoder
 {
     public class MpegStreamReader
     {
-        private Stream _stream;
         private ID3Frame? _id3Frame, _id3v1Frame;
         private RiffHeaderFrame? _riffHeaderFrame;
         private VBRInfo _vbrInfo;
         private bool _hasVbrInfo;
         private MpegFrame? _first, _current, _last, _lastFree;
-        private long _readOffset, _eofOffset;
+        private int _readOffset, _fileLength;
         private bool _endFound, _mixedFrameSize;
+        private byte[] songData;
 
-        public bool CanSeek => _stream.CanSeek;
+        public bool CanSeek => true;
 
         public MpegStreamReader(Stream source)
         {
-            _stream = source ?? throw new ArgumentNullException(nameof(source));
+
+            // Read all bytes from the stream
+            songData = new byte[source.Length];
+            source.Read(songData, 0, songData.Length);
+
             _readOffset = 0;
-            _eofOffset = long.MaxValue;
+            _fileLength = songData.Length;
 
             // find the first Mpeg frame
             var frame = FindNextFrame();
@@ -43,6 +48,8 @@ namespace NLayer.Decoder
             _current = _first;
         }
 
+        private int RemainingCount => _fileLength - _readOffset;
+
         private FrameBase? FindNextFrame()
         {
             // if we've found the end, don't bother looking for anything else
@@ -52,149 +59,133 @@ namespace NLayer.Decoder
             var freeFrame = _lastFree;
             var lastFrameStart = _readOffset;
 
-            // read 3 bytes
-            Span<byte> syncBuf = stackalloc byte[4];
             try
             {
-                if (Read(_readOffset, syncBuf) == 4)
+                // loop until a frame is found
+                while (RemainingCount >= 4)
                 {
-                    // now loop until a frame is found
-                    do
+                    Span<byte> syncBuf = songData.AsSpan(_readOffset, 4);
+                    var sync = (uint)(syncBuf[0] << 24 | syncBuf[1] << 16 | syncBuf[2] << 8 | syncBuf[3]);
+
+                    lastFrameStart = _readOffset;
+
+                    // try ID3 first (for v2 frames)
+                    if (_id3Frame == null)
                     {
-                        var sync = (uint)(syncBuf[0] << 24 | syncBuf[1] << 16 | syncBuf[2] << 8 | syncBuf[3]);
-
-                        lastFrameStart = _readOffset;
-
-                        // try ID3 first (for v2 frames)
-                        if (_id3Frame == null)
+                        var f = ID3Frame.TrySync(sync);
+                        if (f != null)
                         {
-                            var f = ID3Frame.TrySync(sync);
-                            if (f != null)
-                            {
-                                if (f.ValidateFrameHeader(_readOffset, this))
-                                {
-                                    if (!CanSeek)
-                                        f.SaveBuffer();
-
-                                    _readOffset += f.Length;
-                                    DiscardThrough(_readOffset, true);
-
-                                    _id3Frame = f;
-                                    return _id3Frame;
-                                }
-                            }
-                        }
-
-                        // now look for a RIFF header
-                        if (_first == null && _riffHeaderFrame == null)
-                        {
-                            var f = RiffHeaderFrame.TrySync(sync);
-                            if (f != null)
-                            {
-                                if (f.ValidateFrameHeader(_readOffset, this))
-                                {
-                                    _readOffset += f.Length;
-                                    DiscardThrough(_readOffset, true);
-
-                                    return _riffHeaderFrame = f;
-                                }
-                            }
-                        }
-
-                        // finally, just try for an MPEG frame
-                        var frame = MpegFrame.TrySync(sync);
-                        if (frame != null)
-                        {
-                            if (frame.ValidateFrameHeader(_readOffset, this) &&
-                                !(freeFrame != null && (
-                                    frame.Layer != freeFrame.Layer ||
-                                    frame.Version != freeFrame.Version ||
-                                    frame.SampleRate != freeFrame.SampleRate ||
-                                    frame.BitRateIndex > 0)))
+                            if (f.ValidateFrameHeader(_readOffset, this))
                             {
                                 if (!CanSeek)
-                                {
-                                    frame.SaveBuffer();
-                                    DiscardThrough(_readOffset + frame.FrameLength, true);
-                                }
+                                    f.SaveBuffer();
 
-                                _readOffset += frame.FrameLength;
+                                _readOffset += f.Length;
 
-                                if (_first == null)
+                                _id3Frame = f;
+                                return _id3Frame;
+                            }
+                        }
+                    }
+
+                    // now look for a RIFF header
+                    if (_first == null && _riffHeaderFrame == null)
+                    {
+                        var riffFrame = RiffHeaderFrame.TrySync(sync);
+                        if (riffFrame != null)
+                        {
+                            if (riffFrame.ValidateFrameHeader(_readOffset, this))
+                            {
+                                _readOffset += riffFrame.Length;
+                                return _riffHeaderFrame = riffFrame;
+                            }
+                        }
+                    }
+
+                    // finally, just try for an MPEG frame
+                    var frame = MpegFrame.TrySync(sync);
+                    if (frame != null)
+                    {
+                        if (frame.ValidateFrameHeader(_readOffset, this) &&
+                            !(freeFrame != null && (
+                                frame.Layer != freeFrame.Layer ||
+                                frame.Version != freeFrame.Version ||
+                                frame.SampleRate != freeFrame.SampleRate ||
+                                frame.BitRateIndex > 0)))
+                        {
+                            if (!CanSeek)
+                            {
+                                frame.SaveBuffer();
+                            }
+
+                            _readOffset += frame.FrameLength;
+
+                            if (_first == null)
+                            {
+                                if (!_hasVbrInfo && (_hasVbrInfo = frame.ParseVBR(out _vbrInfo)))
                                 {
-                                    if (!_hasVbrInfo && (_hasVbrInfo = frame.ParseVBR(out _vbrInfo)))
-                                    {
-                                        return FindNextFrame();
-                                    }
-                                    else
-                                    {
-                                        frame.Number = 0;
-                                        _first = _last = frame;
-                                    }
+                                    return FindNextFrame();
                                 }
                                 else
                                 {
-                                    if (frame.SampleCount != _first.SampleCount)
-                                        _mixedFrameSize = true;
-
-                                    Debug.Assert(_last != null);
-
-                                    frame.SampleOffset = _last.SampleCount + _last.SampleOffset;
-                                    frame.Number = _last.Number + 1;
-                                    _last = (_last.Next = frame);
+                                    frame.Number = 0;
+                                    _first = _last = frame;
                                 }
-
-                                if (frame.BitRateIndex == 0)
-                                {
-                                    _lastFree = frame;
-                                }
-
-                                return frame;
                             }
-                        }
-
-                        // if we've read MPEG frames and can't figure out what frame type we have,
-                        // try looking for a new ID3 tag
-                        if (_last != null)
-                        {
-                            var f = ID3Frame.TrySync(sync);
-                            if (f != null)
+                            else
                             {
-                                if (f.ValidateFrameHeader(_readOffset, this))
+                                if (frame.SampleCount != _first.SampleCount)
+                                    _mixedFrameSize = true;
+
+                                Debug.Assert(_last != null);
+
+                                frame.SampleOffset = _last.SampleCount + _last.SampleOffset;
+                                frame.Number = _last.Number + 1;
+                                _last = (_last.Next = frame);
+                            }
+
+                            if (frame.BitRateIndex == 0)
+                            {
+                                _lastFree = frame;
+                            }
+
+                            return frame;
+                        }
+                    }
+
+                    // if we've read MPEG frames and can't figure out what frame type we have,
+                    // try looking for a new ID3 tag
+                    if (_last != null)
+                    {
+                        var id3Frame = ID3Frame.TrySync(sync);
+                        if (id3Frame != null)
+                        {
+                            if (id3Frame.ValidateFrameHeader(_readOffset, this))
+                            {
+                                if (!CanSeek)
+                                    id3Frame.SaveBuffer();
+
+                                // if it's a v1 tag, go ahead and parse it
+                                if (id3Frame.Version == ID3FrameType.ID3v1 || id3Frame.Version == ID3FrameType.ID3v1Enh)
                                 {
-                                    if (!CanSeek)
-                                        f.SaveBuffer();
-
-                                    // if it's a v1 tag, go ahead and parse it
-                                    if (f.Version == 1)
-                                    {
-                                        _id3v1Frame = f;
-                                    }
-                                    else
-                                    {
-                                        // grrr...  the ID3 2.4 spec says tags can be anywhere in the file
-                                        // and that later tags can override earlier ones...  boo
-
-                                        Debug.Assert(_id3Frame != null);
-                                        _id3Frame.Merge(f);
-                                    }
-
-                                    _readOffset += f.Length;
-                                    DiscardThrough(_readOffset, true);
-
-                                    return f;
+                                    _id3v1Frame = id3Frame;
                                 }
+                                else
+                                {
+                                    // grrr...  the ID3 2.4 spec says tags can be anywhere in the file
+                                    // and that later tags can override earlier ones...  boo
+                                    Debug.Assert(_id3Frame != null);
+                                    _id3Frame.Merge(id3Frame);
+                                }
+
+                                _readOffset += id3Frame.Length;
+                                return id3Frame;
                             }
                         }
+                    }
 
-                        // well, we didn't find anything, so rinse and repeat with the next byte
-                        _readOffset++;
-                        if (_first == null || !CanSeek)
-                            DiscardThrough(_readOffset, true);
-
-                        syncBuf.Slice(1, 3).CopyTo(syncBuf);
-                    } 
-                    while (Read(_readOffset + 3, syncBuf.Slice(3, 1)) == 1);
+                    // we didn't find any valid frame, increment the read offset by 1 and try again
+                    _readOffset++;
                 }
 
                 // move the "end of frame" marker for the last free format frame (in case we have one)
@@ -226,320 +217,19 @@ namespace NLayer.Decoder
             }
         }
 
-        private class ReadBuffer
-        {
-            public byte[] Data;
-            public long BaseOffset;
-            public int End;
-            public int DiscardCount;
-
-            public ReadBuffer(int initialSize)
-            {
-                initialSize = 2 << (int)Math.Log(initialSize, 2);
-
-                Data = new byte[initialSize];
-            }
-
-            public int Read(MpegStreamReader reader, long offset, Span<byte> destination)
-            {
-                int count = destination.Length;
-                int startIdx = EnsureFilled(reader, offset, ref count);
-
-                Data.AsSpan(startIdx, count).CopyTo(destination);
-
-                return count;
-            }
-
-            public int ReadByte(MpegStreamReader reader, long offset)
-            {
-                int count = 1;
-                int startIdx = EnsureFilled(reader, offset, ref count);
-                if (count == 1)
-                    return Data[startIdx];
-                return -1;
-            }
-
-            private int EnsureFilled(MpegStreamReader reader, long offset, ref int count)
-            {
-                // if the offset & count are inside our buffer's range, just return the appropriate index
-                int startIdx = (int)(offset - BaseOffset);
-                int endIdx = startIdx + count;
-                if (startIdx < 0 || endIdx > End)
-                {
-                    int readStart = 0;
-                    int readCount = 0;
-                    int moveCount = 0;
-                    long readOffset = 0;
-
-                    #region Decision-Making
-
-                    if (startIdx < 0)
-                    {
-                        // if we can't seek, there's nothing we can do
-                        if (!reader._stream.CanSeek)
-                            throw new InvalidOperationException("The stream is not seekable.");
-
-                        // if there's data in the buffer, try to keep it (up to doubling the buffer size)
-                        if (End > 0)
-                        {
-                            // if doubling the buffer would push it past the max size, don't check it
-                            if ((startIdx + Data.Length > 0) ||
-                                (Data.Length * 2 <= 16384 && startIdx + Data.Length * 2 > 0))
-                                endIdx = End;
-                        }
-
-                        // we know we'll have to start reading here
-                        readOffset = offset;
-
-                        // if the end of the request is before the start of our buffer...
-                        if (endIdx < 0)
-                        {
-                            // ... just truncate and move on
-                            Truncate();
-
-                            // set up our read parameters
-                            BaseOffset = offset;
-                            startIdx = 0;
-                            endIdx = count;
-
-                            // how much do we need to read?
-                            readCount = count;
-                        }
-                        else // i.e., endIdx >= 0
-                        {
-                            // we have overlap with existing data...  save as much as possible
-                            moveCount = -endIdx;
-                            readCount = -startIdx;
-                        }
-                    }
-                    else // i.e., startIdx >= 0
-                    {
-                        // we only get to here if at least one byte of the request is past the end of the read data
-                        // start with the simplest scenario and work our way up
-
-                        // 1) We just need to fill the buffer a bit more
-                        if (endIdx < Data.Length)
-                        {
-                            readCount = endIdx - End;
-                            readStart = End;
-                            readOffset = BaseOffset + readStart;
-                        }
-                        // 2) We need to discard some bytes, then fill the buffer
-                        else if (endIdx - DiscardCount < Data.Length)
-                        {
-                            moveCount = DiscardCount;
-                            readStart = End;
-                            readCount = endIdx - readStart;
-                            readOffset = BaseOffset + readStart;
-                        }
-                        // 3) We need to expand the buffer to hold all the existing & requested data
-                        else if (Data.Length * 2 <= 16384)
-                        {
-                            // by definition, we discard
-                            moveCount = DiscardCount;
-                            readStart = End;
-                            readCount = endIdx - End;
-                            readOffset = BaseOffset + readStart;
-                        }
-                        // 4) We have to throw away some data that hasn't been discarded
-                        else
-                        {
-                            // just truncate
-                            Truncate();
-
-                            // set up our read parameters
-                            BaseOffset = offset;
-                            readOffset = offset;
-                            startIdx = 0;
-                            endIdx = count;
-
-                            // how much do we have to read?
-                            readCount = count;
-                        }
-                    }
-
-                    #endregion
-
-                    #region Buffer Resizing & Data Moving
-
-                    if (endIdx - moveCount > Data.Length || readStart + readCount - moveCount > Data.Length)
-                    {
-                        int newSize = Data.Length * 2;
-                        while (newSize < endIdx - moveCount)
-                        {
-                            newSize *= 2;
-                        }
-
-                        var newBuf = new byte[newSize];
-                        if (moveCount < 0)
-                        {
-                            // reverse copy
-                            Buffer.BlockCopy(Data, 0, newBuf, -moveCount, End + moveCount);
-
-                            DiscardCount = 0;
-                        }
-                        else
-                        {
-                            // forward or neutral copy
-                            Buffer.BlockCopy(Data, moveCount, newBuf, 0, End - moveCount);
-
-                            DiscardCount -= moveCount;
-                        }
-                        Data = newBuf;
-                    }
-                    else if (moveCount != 0)
-                    {
-                        if (moveCount > 0)
-                        {
-                            // forward move
-                            Buffer.BlockCopy(Data, moveCount, Data, 0, End - moveCount);
-
-                            DiscardCount -= moveCount;
-                        }
-                        else
-                        {
-                            // backward move
-                            for (
-                                int i = 0, srcIdx = Data.Length - 1, destIdx = Data.Length - 1 - moveCount;
-                                i < moveCount;
-                                i++, srcIdx--, destIdx--)
-                            {
-                                Data[destIdx] = Data[srcIdx];
-                            }
-
-                            DiscardCount = 0;
-                        }
-                    }
-
-                    BaseOffset += moveCount;
-                    readStart -= moveCount;
-                    startIdx -= moveCount;
-                    endIdx -= moveCount;
-                    End -= moveCount;
-
-                    #endregion
-
-                    #region Buffer Filling
-
-                    if (readCount > 0 && reader._stream.Position != readOffset && readOffset < reader._eofOffset)
-                    {
-                        if (reader.CanSeek)
-                        {
-                            try
-                            {
-                                reader._stream.Position = readOffset;
-                            }
-                            catch (EndOfStreamException)
-                            {
-                                reader._eofOffset = reader._stream.Length;
-                                readCount = 0;
-                            }
-                        }
-                        else
-                        {
-                            // ugh, gotta read bytes until we've reached the desired offset
-                            long seekCount = readOffset - reader._stream.Position;
-                            while (--seekCount >= 0)
-                            {
-                                if (reader._stream.ReadByte() == -1)
-                                {
-                                    reader._eofOffset = reader._stream.Position;
-                                    readCount = 0;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-
-                    while (readCount > 0 && readOffset < reader._eofOffset)
-                    {
-                        int toRead = readCount;
-                        int spaceRemaining = Data.Length - readStart;
-                        if (toRead > spaceRemaining)
-                            toRead = spaceRemaining;
-
-                        int tmp = reader._stream.Read(Data, readStart, toRead);
-                        if (tmp == 0)
-                            break;
-
-                        readStart += tmp;
-                        readOffset += tmp;
-                        readCount -= tmp;
-                    }
-
-                    if (readStart > End)
-                        End = readStart;
-
-                    if (End < endIdx)
-                    {
-                        // we didn't get a full read...
-                        count = Math.Max(0, End - startIdx);
-                    }
-                    // NB: if desired, switch to "minimal reads" by commenting-out this clause
-                    else if (End < Data.Length)
-                    {
-                        // try to finish filling the buffer
-                        var temp = reader._stream.Read(Data, End, Data.Length - End);
-                        End += temp;
-                    }
-
-                    #endregion
-                }
-
-                return startIdx;
-            }
-
-            public void DiscardThrough(long offset)
-            {
-                var count = (int)(offset - BaseOffset);
-                DiscardCount = Math.Max(count, DiscardCount);
-
-                if (DiscardCount >= Data.Length)
-                    CommitDiscard();
-            }
-
-            private void Truncate()
-            {
-                End = 0;
-                DiscardCount = 0;
-            }
-
-            private void CommitDiscard()
-            {
-                if (DiscardCount >= Data.Length || DiscardCount >= End)
-                {
-                    // we have been told to discard the entire buffer
-                    BaseOffset += DiscardCount;
-                    End = 0;
-                }
-                else
-                {
-                    // just discard the first part...
-                    //Array.Copy(_readBuf, _readBufDiscardCount, _readBuf, 0, _readBufEnd - _readBufDiscardCount);
-                    Buffer.BlockCopy(Data, DiscardCount, Data, 0, End - DiscardCount);
-                    BaseOffset += DiscardCount;
-                    End -= DiscardCount;
-                }
-                DiscardCount = 0;
-            }
-        }
-
-        private ReadBuffer _readBuf = new ReadBuffer(2048);
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Read(long offset, Span<byte> destination)
         {
-            return _readBuf.Read(this, offset, destination);
+            var length = Math.Min(destination.Length, songData.Length - (int)offset);
+            songData.AsSpan((int)offset, length).CopyTo(destination);
+            return length;
         }
 
-        public int ReadByte(long offset)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public byte ReadByte(long offset)
         {
             Debug.Assert(offset >= 0);
-            return _readBuf.ReadByte(this, offset);
-        }
-
-        public void DiscardThrough(long offset, bool minimalRead)
-        {
-            _readBuf.DiscardThrough(offset);
+            return songData[offset];
         }
 
         public void ReadToEnd()
@@ -651,7 +341,6 @@ namespace NLayer.Decoder
                 if (CanSeek)
                 {
                     frame.SaveBuffer();
-                    DiscardThrough(frame.Offset + frame.FrameLength, false);
                 }
 
                 if (frame == _last && !_endFound)

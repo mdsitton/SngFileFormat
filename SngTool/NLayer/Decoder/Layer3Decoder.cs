@@ -2152,16 +2152,13 @@ namespace NLayer.Decoder
         // Layer III interleaves the samples, so we have to make them linear again
         private void InversePolyphase(ref float source, int ch, int ofs, Span<float> dst)
         {
-            float* polyPhase = stackalloc float[SBLIMIT];
-            Span<float> sPolyPhase = new Span<float>(polyPhase, SBLIMIT);
-
             for (nint ss = 0; ss < SSLIMIT; ss++, ofs += SBLIMIT)
             {
-                for (nint sb = 0; sb < SBLIMIT; sb++)
-                    polyPhase[sb] = Unsafe.Add(ref source, sb * SSLIMIT + ss);
+                Span<float> polyPhase = dst.Slice(ofs, SBLIMIT);
+                for (int sb = 0; sb < SBLIMIT; sb++)
+                    polyPhase[sb] = Unsafe.Add(ref source, (sb * SSLIMIT) + ss);
 
-                InversePolyPhase(ch, sPolyPhase);
-                sPolyPhase.CopyTo(dst.Slice(ofs));
+                InversePolyPhase(ch, polyPhase);
             }
         }
 

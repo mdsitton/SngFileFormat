@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NLayer", "NLayer\NLayer.csp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NVorbis", "NVorbis\NVorbis.csproj", "{018993E2-EB63-4D66-84B0-0B5D0EC1D7C1}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "mp3test", "mp3test\mp3test.csproj", "{6DD2AA79-1283-4942-BB0D-CC24BE79934A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,10 @@ Global
 		{018993E2-EB63-4D66-84B0-0B5D0EC1D7C1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{018993E2-EB63-4D66-84B0-0B5D0EC1D7C1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{018993E2-EB63-4D66-84B0-0B5D0EC1D7C1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6DD2AA79-1283-4942-BB0D-CC24BE79934A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6DD2AA79-1283-4942-BB0D-CC24BE79934A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6DD2AA79-1283-4942-BB0D-CC24BE79934A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6DD2AA79-1283-4942-BB0D-CC24BE79934A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
