@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Cysharp.Collections;
 
@@ -11,8 +12,8 @@ namespace SngLib
 
         public bool metadataAvailable;
 
-        public Dictionary<string, string> Metadata = new();
-        public Dictionary<string, NativeByteArray?> Files = new();
+        public Dictionary<string, string> Metadata = new Dictionary<string, string>();
+        public Dictionary<string, NativeByteArray?> Files = new Dictionary<string, NativeByteArray?>();
 
         public void AddFile(string fileName, NativeByteArray? data)
         {

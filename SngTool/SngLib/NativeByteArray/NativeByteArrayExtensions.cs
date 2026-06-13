@@ -1,6 +1,6 @@
 ﻿#nullable enable
 
-#if !NETSTANDARD2_0 && !UNITY_2019_1_OR_NEWER
+#if NET5_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
 
 using System;
 using System.IO;

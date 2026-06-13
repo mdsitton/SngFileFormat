@@ -1,5 +1,9 @@
 ﻿#nullable enable
 
+#if NET6_0_OR_GREATER
+#define WITH_INTEROPSERVICES_NATIVEMEMORY
+#endif
+
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -57,11 +61,22 @@ namespace Cysharp.Collections
             {
                 if (skipZeroClear)
                 {
+#if WITH_INTEROPSERVICES_NATIVEMEMORY
                     buffer = (byte*)NativeMemory.Alloc(checked((nuint)length), 1);
+#else
+                    int byteCount = (int)checked((uint)length) * 1;
+                    buffer = (byte*)Marshal.AllocHGlobal(byteCount);
+#endif
                 }
                 else
                 {
+#if WITH_INTEROPSERVICES_NATIVEMEMORY
                     buffer = (byte*)NativeMemory.AllocZeroed(checked((nuint)length), 1);
+#else
+                    int byteCount = (int)checked((uint)length) * 1;
+                    buffer = (byte*)Marshal.AllocHGlobal(byteCount);
+                    Unsafe.InitBlockUnaligned(buffer, 0, (uint)byteCount);
+#endif
                 }
 
                 if (addMemoryPressure)
@@ -109,7 +124,19 @@ namespace Cysharp.Collections
             // This vastly reduces the total number of re-allocations
             // with the drawback of increasing memory usage somewhat
             newLength = NextPO2(newLength);
+#if WITH_INTEROPSERVICES_NATIVEMEMORY
             buffer = (byte*)NativeMemory.Realloc(buffer, (nuint)newLength);
+#else
+            int byteCount = (int)newLength;
+            byte* newBuffer = (byte*)Marshal.AllocHGlobal(byteCount);
+
+            Span<byte> src = new Span<byte>(buffer, (int)length);
+            Span<byte> dst = new Span<byte>(newBuffer, (int)byteCount);
+            src.CopyTo(dst);
+
+            Marshal.FreeHGlobal((IntPtr)buffer);
+            buffer = newBuffer;
+#endif
 
             allocatedLength = newLength;
             length = newLength;
@@ -291,7 +318,11 @@ namespace Cysharp.Collections
                 isDisposed = true;
                 if (Unsafe.IsNullRef(ref Unsafe.AsRef<byte>(buffer))) return;
 
+#if WITH_INTEROPSERVICES_NATIVEMEMORY
                 NativeMemory.Free(buffer);
+#else
+                Marshal.FreeHGlobal((IntPtr)buffer);
+#endif
                 if (addMemoryPressure)
                 {
                     GC.RemoveMemoryPressure(length * Unsafe.SizeOf<byte>());
